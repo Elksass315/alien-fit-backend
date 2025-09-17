@@ -16,6 +16,7 @@ export class UserEntity extends Model{
     declare googleId?: string;
     declare isVerified: boolean;
     declare isBlocked: boolean;
+    declare isProfileComplete?: boolean;
 
     // timestamps
     declare readonly createdAt: Date;
@@ -77,6 +78,10 @@ UserEntity.init(
             defaultValue: false,
         },
         isBlocked: {
+            type: DataTypes.BOOLEAN,
+            defaultValue: false,
+        },
+        isProfileComplete: {
             type: DataTypes.BOOLEAN,
             defaultValue: false,
         },

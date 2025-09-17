@@ -18,7 +18,7 @@ export async function loginController(req: Request, res: Response): Promise<void
     res.status(StatusCodes.OK).json({
         status: 'success',
         data: {
-            user: user.toJSON(),
+            user: await UserService.getUserById(user.id.toString()),
             accessToken,
             refreshToken,
         }
