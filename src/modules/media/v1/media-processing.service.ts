@@ -1,4 +1,4 @@
-import { MediaEntity } from './entity/media.entity.js';
+import { MediaEntity } from './model/media.model.js';
 import { HttpResponseError } from '../../../utils/appError.js';
 import { StatusCodes } from 'http-status-codes';
 import { StorageFactory } from '../../../storage/storage-factory.js';

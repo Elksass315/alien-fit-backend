@@ -3,7 +3,7 @@ import { sequelize } from '../../../../database/db-config.js';
 
 
 export class MediaEntity extends Model {
-    declare id: number;
+    declare id: string;
     declare key: string;
     declare url: string;
     declare originalName?: string;
@@ -20,8 +20,8 @@ export class MediaEntity extends Model {
 MediaEntity.init(
     {
         id: {
-            type: DataTypes.INTEGER,
-            autoIncrement: true,
+            type: DataTypes.UUID,
+            defaultValue: DataTypes.UUIDV4,
             primaryKey: true,
         },
         key: {
@@ -61,11 +61,6 @@ MediaEntity.init(
         sequelize,
         modelName: 'Media',
         tableName: 'media',
-        timestamps: true,
-        defaultScope: {
-            attributes: {
-                exclude: ['key'],
-            },
-        },
+        timestamps: true
     }
 );
