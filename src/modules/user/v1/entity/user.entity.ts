@@ -68,6 +68,16 @@ UserEntity.init(
             type: DataTypes.ENUM(...Object.values(Roles)),
             defaultValue: Roles.USER,
         },
+        height: {
+            type: DataTypes.INTEGER,
+            defaultValue: 0,
+            allowNull: true,
+        },
+        weight: {
+            type: DataTypes.INTEGER,
+            defaultValue: 0,
+            allowNull: true,
+        },
         googleId: {
             type: DataTypes.STRING,
             unique: true,
