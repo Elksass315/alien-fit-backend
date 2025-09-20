@@ -12,6 +12,7 @@ import { userRouterV1 } from './modules/user/v1/user.routes.js';
 import { authRouterV1 } from './modules/auth/v1/auth.routes.js';
 import { userSessionRouterV1 } from './modules/user-session/v1/user.routes.js';
 import { mediaRouterV1 } from './modules/media/v1/media.routes.js';
+import { userProfileRouterV1 } from './modules/user-profile/v1/user-profile.routes.js';
 
 import { errorMiddleware } from './middleware/error.middleware.js';
 import { notFoundMiddleware } from './middleware/not-found.middleware.js';
@@ -36,6 +37,7 @@ export function initializeApp(app: express.Application) {
     app.use('/api/v1/auth', authRouterV1);
     app.use('/api/v1/user-session', userSessionRouterV1);
     app.use('/api/v1/media', mediaRouterV1);
+    app.use('/api/v1/user-profile', userProfileRouterV1);
 
     app.use(notFoundMiddleware);
     app.use(errorMiddleware);
