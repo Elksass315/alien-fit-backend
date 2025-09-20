@@ -16,7 +16,7 @@ export async function createOrUpdateUserProfileController(req: Request, res: Res
   const userId = req.params.userId || req.user.id;
   const { profile, isProfileComplete } = await UserProfileService.createOrUpdateUserProfile(userId, req.body);
   
-  res.status(StatusCodes.OK).json({
+  res.status(StatusCodes.CREATED).json({
     status: 'success',
     data: { 
       profile,
