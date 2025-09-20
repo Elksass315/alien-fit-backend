@@ -9,7 +9,7 @@ export const sequelize = new Sequelize(DB_URL, {
     logging: env.NODE_ENV === 'development' ? (msg) => debugLogger.debug(msg) : false,
 });
 
-sequelize.sync({ force: true });
+sequelize.sync({ alter: true });
 
 export async function initializeDatabase() {
     try {
