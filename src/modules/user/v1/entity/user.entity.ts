@@ -8,7 +8,7 @@ import { UserSessionEntity } from '../../../user-session/v1/entity/user-session.
 
 // ---------- Model ----------
 export class UserEntity extends Model{
-    declare id: number;
+    declare id: string;
     declare provider: string;
     declare password?: string;
     declare name: string;
@@ -41,8 +41,8 @@ export class UserEntity extends Model{
 UserEntity.init(
     {
         id: {
-            type: DataTypes.INTEGER,
-            autoIncrement: true,
+            type: DataTypes.UUID,
+            defaultValue: DataTypes.UUIDV4,
             primaryKey: true,
         },
         provider: {

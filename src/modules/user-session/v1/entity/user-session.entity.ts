@@ -5,8 +5,8 @@ import { UserEntity } from '../../../user/v1/entity/user.entity.js';
 
 // ---------- Model ----------
 export class UserSessionEntity extends Model {
-    declare id: number;
-    declare userId: number;
+    declare id: string;
+    declare userId: string;
     declare refreshToken?: string;
     declare fcmToken?: string;
     declare expiresAt?: Date;
@@ -19,12 +19,12 @@ export class UserSessionEntity extends Model {
 UserSessionEntity.init(
     {
         id: {
-            type: DataTypes.INTEGER,
-            autoIncrement: true,
+            type: DataTypes.UUID,
+            defaultValue: DataTypes.UUIDV4,
             primaryKey: true,
         },
         userId: {
-            type: DataTypes.INTEGER,
+            type: DataTypes.UUID,
             allowNull: false,
             references: {
                 model: 'users', // Use model name string to avoid circular dependency
