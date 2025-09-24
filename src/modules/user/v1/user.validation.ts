@@ -32,6 +32,23 @@ export const userValidationSchema = Joi.object({
         'any.only': `Role must be one of ${Object.values(Roles).join(', ')}`,
         'any.default': `Role defaults to '${Roles.USER}' if not specified`
     }),
+    height: Joi.number().integer().min(50).max(300).optional().messages({
+        'number.base': 'Height must be a number',
+        'number.integer': 'Height must be an integer',
+        'number.min': 'Height must be at least 50 cm',
+        'number.max': 'Height cannot exceed 300 cm'
+    }),
+    weight: Joi.number().integer().min(20).max(500).optional().messages({
+        'number.base': 'Weight must be a number',
+        'number.integer': 'Weight must be an integer',
+        'number.min': 'Weight must be at least 20 kg',
+        'number.max': 'Weight cannot exceed 500 kg'
+    }),
+    birthDate: Joi.date().max('now').min('1900-01-01').optional().messages({
+        'date.base': 'Birth date must be a valid date',
+        'date.max': 'Birth date cannot be in the future',
+        'date.min': 'Birth date cannot be before 1900'
+    }),
     isVerified: Joi.boolean().optional().messages({
         'boolean.base': 'isVerified must be a boolean',
     }),
@@ -75,6 +92,21 @@ export const getUsersByFilterSchema = Joi.object({
     }),
     role: Joi.string().valid(...Object.values(Roles)).optional().messages({
         'any.only': `Role must be one of: ${Object.values(Roles).join(', ')}`
+    }),
+    height: Joi.number().integer().min(50).max(300).optional().messages({
+        'number.base': 'Height must be a number',
+        'number.integer': 'Height must be an integer',
+        'number.min': 'Height must be at least 50 cm',
+        'number.max': 'Height cannot exceed 300 cm'
+    }),
+    weight: Joi.number().integer().min(20).max(500).optional().messages({
+        'number.base': 'Weight must be a number',
+        'number.integer': 'Weight must be an integer',
+        'number.min': 'Weight must be at least 20 kg',
+        'number.max': 'Weight cannot exceed 500 kg'
+    }),
+    birthDate: Joi.date().optional().messages({
+        'date.base': 'Birth date must be a valid date'
     }),
     isVerified: Joi.boolean().optional().messages({
         'boolean.base': 'isVerified must be a boolean'

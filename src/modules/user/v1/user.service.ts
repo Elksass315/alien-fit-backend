@@ -83,6 +83,17 @@ export class UserService {
         if (filter.provider) {
             filter.provider = { [Op.iLike]: `%${filter.provider}%` }; // Partial, case-insensitive match
         }
+        // Handle numeric filters for height and weight
+        if (filter.height) {
+            filter.height = Number(filter.height);
+        }
+        if (filter.weight) {
+            filter.weight = Number(filter.weight);
+        }
+        // Handle date filter for birthDate
+        if (filter.birthDate) {
+            filter.birthDate = new Date(filter.birthDate);
+        }
 
         const [users, total] = await Promise.all([
             UserEntity.findAll({

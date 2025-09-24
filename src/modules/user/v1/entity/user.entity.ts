@@ -7,16 +7,21 @@ import { UserSessionEntity } from '../../../user-session/v1/entity/user-session.
 
 
 // ---------- Model ----------
-export class UserEntity extends Model{
+export class UserEntity extends Model {
     declare id: string;
     declare provider: string;
     declare password?: string;
     declare name: string;
     declare role: string;
+    declare height?: number;
+    declare weight?: number;
+    declare birthDate?: Date;
     declare googleId?: string;
     declare isVerified: boolean;
     declare isBlocked: boolean;
     declare isProfileComplete?: boolean;
+
+    declare readonly age?: number;
 
     // timestamps
     declare readonly createdAt: Date;
@@ -78,6 +83,10 @@ UserEntity.init(
             defaultValue: 0,
             allowNull: true,
         },
+        birthDate: {
+            type: DataTypes.DATE,
+            allowNull: true,
+        },
         googleId: {
             type: DataTypes.STRING,
             unique: true,
@@ -94,6 +103,24 @@ UserEntity.init(
         isProfileComplete: {
             type: DataTypes.BOOLEAN,
             defaultValue: false,
+        },
+        age: {
+            type: DataTypes.VIRTUAL,
+            get() {
+                const birthDate = this.getDataValue('birthDate');
+                if (!birthDate) return null;
+
+                const today = new Date();
+                const birth = new Date(birthDate);
+                let age = today.getFullYear() - birth.getFullYear();
+                const monthDiff = today.getMonth() - birth.getMonth();
+
+                if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birth.getDate())) {
+                    age--;
+                }
+
+                return age;
+            }
         },
     },
     {

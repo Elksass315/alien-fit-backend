@@ -15,7 +15,10 @@ export const loginSchema = Joi.object({
 export const registerSchema = userValidationSchema
     .fork(['role', 'isVerified'], schema => schema.forbidden())
     .keys({
-        password: userValidationSchema.extract('password')
+        password: userValidationSchema.extract('password'),
+        height: userValidationSchema.extract('height'),
+        weight: userValidationSchema.extract('weight'),
+        birthDate: userValidationSchema.extract('birthDate'),
     });
 
 export const refreshTokenSchema = Joi.object({
@@ -42,4 +45,7 @@ export const updateMeSchema = userValidationSchema
     .fork(['provider', 'password', 'role', 'isVerified'], schema => schema.forbidden())
     .keys({
         name: userValidationSchema.extract('name').optional(),
+        height: userValidationSchema.extract('height'),
+        weight: userValidationSchema.extract('weight'),
+        birthDate: userValidationSchema.extract('birthDate'),
     });
