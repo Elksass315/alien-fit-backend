@@ -90,10 +90,6 @@ export class UserService {
         if (filter.weight) {
             filter.weight = Number(filter.weight);
         }
-        // Handle date filter for birthDate
-        if (filter.birthDate) {
-            filter.birthDate = new Date(filter.birthDate);
-        }
 
         const [users, total] = await Promise.all([
             UserEntity.findAll({

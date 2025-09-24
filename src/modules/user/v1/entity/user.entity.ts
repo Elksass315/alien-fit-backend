@@ -15,13 +15,12 @@ export class UserEntity extends Model {
     declare role: string;
     declare height?: number;
     declare weight?: number;
-    declare birthDate?: Date;
+    declare age?: number;
+    declare gender?: string;
     declare googleId?: string;
     declare isVerified: boolean;
     declare isBlocked: boolean;
     declare isProfileComplete?: boolean;
-
-    declare readonly age?: number;
 
     // timestamps
     declare readonly createdAt: Date;
@@ -83,8 +82,12 @@ UserEntity.init(
             defaultValue: 0,
             allowNull: true,
         },
-        birthDate: {
-            type: DataTypes.DATE,
+        age: {
+            type: DataTypes.INTEGER,
+            allowNull: true,
+        },
+        gender: {
+            type: DataTypes.STRING,
             allowNull: true,
         },
         googleId: {
@@ -103,24 +106,6 @@ UserEntity.init(
         isProfileComplete: {
             type: DataTypes.BOOLEAN,
             defaultValue: false,
-        },
-        age: {
-            type: DataTypes.VIRTUAL,
-            get() {
-                const birthDate = this.getDataValue('birthDate');
-                if (!birthDate) return null;
-
-                const today = new Date();
-                const birth = new Date(birthDate);
-                let age = today.getFullYear() - birth.getFullYear();
-                const monthDiff = today.getMonth() - birth.getMonth();
-
-                if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birth.getDate())) {
-                    age--;
-                }
-
-                return age;
-            }
         },
     },
     {

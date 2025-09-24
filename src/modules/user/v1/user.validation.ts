@@ -1,6 +1,7 @@
 import Joi from 'joi';
 import { JoiCustomValidateObjectId } from '../../../utils/joi-custom-validate-object-id.js';
 import { Roles } from '../../../constants/roles.js';
+import { Gender } from '../../../constants/gender.js';
 
 export const userValidationSchema = Joi.object({
     provider: Joi.string().min(6).max(255).required()
@@ -44,10 +45,14 @@ export const userValidationSchema = Joi.object({
         'number.min': 'Weight must be at least 20 kg',
         'number.max': 'Weight cannot exceed 500 kg'
     }),
-    birthDate: Joi.date().max('now').min('1900-01-01').optional().messages({
-        'date.base': 'Birth date must be a valid date',
-        'date.max': 'Birth date cannot be in the future',
-        'date.min': 'Birth date cannot be before 1900'
+    age: Joi.number().integer().min(0).optional().messages({
+        'number.base': 'Age must be a number',
+        'number.integer': 'Age must be an integer',
+        'number.min': 'Age must be at least 0'
+    }),
+    gender: Joi.string().valid(...Object.values(Gender)).optional().messages({
+        'string.base': 'Gender must be a string',
+        'any.only': `Gender must be one of: ${Object.values(Gender).join(', ')}`
     }),
     isVerified: Joi.boolean().optional().messages({
         'boolean.base': 'isVerified must be a boolean',

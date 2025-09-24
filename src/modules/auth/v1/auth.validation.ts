@@ -18,7 +18,8 @@ export const registerSchema = userValidationSchema
         password: userValidationSchema.extract('password'),
         height: userValidationSchema.extract('height'),
         weight: userValidationSchema.extract('weight'),
-        birthDate: userValidationSchema.extract('birthDate'),
+        age: userValidationSchema.extract('age'),
+        gender: userValidationSchema.extract('gender'),
     });
 
 export const refreshTokenSchema = Joi.object({
@@ -47,5 +48,5 @@ export const updateMeSchema = userValidationSchema
         name: userValidationSchema.extract('name').optional(),
         height: userValidationSchema.extract('height'),
         weight: userValidationSchema.extract('weight'),
-        birthDate: userValidationSchema.extract('birthDate'),
+        age: userValidationSchema.extract('age'),
     });
