@@ -54,6 +54,9 @@ export const userValidationSchema = Joi.object({
         'string.base': 'Gender must be a string',
         'any.only': `Gender must be one of: ${Object.values(Gender).join(', ')}`
     }),
+    isProfileCompleted: Joi.boolean().optional().messages({
+        'boolean.base': 'isProfileCompleted must be a boolean',
+    }),
     isVerified: Joi.boolean().optional().messages({
         'boolean.base': 'isVerified must be a boolean',
     }),
