@@ -8,6 +8,7 @@ const envSchema = z.object({
     NODE_ENV: z.enum(['development', 'production', 'test']),
     PORT: z.coerce.number().int().positive().default(3000),
     DB_URI: z.url(),
+    REDIS_URL: z.string().url().default('redis://localhost:6379/0'),
     APP_NAME: z.string().min(1, 'APP_NAME must not be empty'),
     APP_VERSION: z.string().min(1, 'APP_VERSION must not be empty'),
     SUPER_ADMIN_PROVIDER: z.string().min(1, 'SUPER_ADMIN_PROVIDER must not be empty'),

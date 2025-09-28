@@ -1,0 +1,214 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <title>Socket.IO Chat Playground</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <style>
+        :root {
+            color-scheme: light dark;
+            font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+        }
+
+        body {
+            margin: 0;
+            padding: 0;
+            background: #0f172a;
+            color: #e2e8f0;
+        }
+
+        header {
+            padding: 1rem 1.5rem;
+            background: #1e293b;
+            border-bottom: 1px solid #334155;
+        }
+
+        h1 {
+            margin: 0;
+            font-size: 1.5rem;
+        }
+
+        main {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+            gap: 1rem;
+            padding: 1.5rem;
+        }
+
+        section {
+            background: #1e293b;
+            border: 1px solid #334155;
+            border-radius: 12px;
+            padding: 1rem;
+            display: flex;
+            flex-direction: column;
+            gap: 0.75rem;
+        }
+
+        section h2 {
+            margin: 0;
+            font-size: 1.1rem;
+        }
+
+        label {
+            font-size: 0.85rem;
+            text-transform: uppercase;
+            letter-spacing: 0.08em;
+            color: #94a3b8;
+        }
+
+        input,
+        textarea,
+        select {
+            width: 100%;
+            background: #0f172a;
+            color: #e2e8f0;
+            border: 1px solid #475569;
+            border-radius: 8px;
+            padding: 0.6rem 0.75rem;
+            font-size: 0.95rem;
+        }
+
+        textarea {
+            resize: vertical;
+            min-height: 80px;
+        }
+
+        button {
+            background: #2563eb;
+            border: none;
+            color: white;
+            padding: 0.6rem 0.9rem;
+            border-radius: 8px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: background 0.2s ease;
+        }
+
+        button.secondary {
+            background: #334155;
+        }
+
+        button:hover {
+            background: #1d4ed8;
+        }
+
+        button.secondary:hover {
+            background: #475569;
+        }
+
+        .button-group {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.5rem;
+        }
+
+        #log {
+            background: #0f172a;
+            border-radius: 12px;
+            padding: 1rem;
+            font-family: "JetBrains Mono", "Fira Code", monospace;
+            height: 100%;
+            min-height: 240px;
+            overflow-y: auto;
+            white-space: pre-wrap;
+            word-break: break-word;
+        }
+
+        .two-col {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+            gap: 0.5rem;
+        }
+    </style>
+    <script src="/socket.io/socket.io.js"></script>
+</head>
+
+<body>
+    <header>
+        <h1>Alien Fit Chat Playground</h1>
+        <p style="margin: 0.25rem 0 0; color:#94a3b8; font-size:0.9rem;">Use this dashboard to exercise the Socket.IO
+            chat API, heartbeat presence, and REST endpoints.</p>
+    </header>
+    <main>
+        <section>
+            <h2>Connection</h2>
+            <div>
+                <label for="baseUrl">API Base URL</label>
+                <input id="baseUrl" type="text" value="http://localhost:3000" placeholder="http://localhost:3000">
+            </div>
+            <div>
+                <label for="socketPath">Socket Namespace / Path (optional)</label>
+                <input id="socketPath" type="text" value="/" placeholder="/">
+            </div>
+            <div>
+                <label for="accessToken">JWT Access Token</label>
+                <textarea id="accessToken" placeholder="Paste bearer token here"></textarea>
+            </div>
+            <div class="two-col">
+                <button id="connectBtn">Connect</button>
+                <button id="disconnectBtn" class="secondary">Disconnect</button>
+            </div>
+            <div class="button-group">
+                <button id="heartbeatBtn" class="secondary">Send Heartbeat</button>
+                <button id="clearLogBtn" class="secondary">Clear Log</button>
+            </div>
+            <div>
+                <label>Socket Status</label>
+                <div id="status">disconnected</div>
+            </div>
+        </section>
+
+        <section>
+            <h2>Emit Message</h2>
+            <p style="margin:0; color:#cbd5f5; font-size:0.85rem;">As USER leave target user blank. Trainers/Admins must
+                supply the userId they are helping.</p>
+            <div>
+                <label for="targetUserId">Target User ID</label>
+                <input id="targetUserId" type="text" placeholder="Required when acting as trainer/admin">
+            </div>
+            <div>
+                <label for="messageContent">Message</label>
+                <textarea id="messageContent" placeholder="Type chat message"></textarea>
+            </div>
+            <button id="sendMessageBtn">Emit chat:send</button>
+        </section>
+
+        <section>
+            <h2>REST Helpers</h2>
+            <div class="button-group">
+                <button data-action="fetch-me">GET /chat/me</button>
+                <button data-action="fetch-me-messages">GET /chat/me/messages</button>
+                <button data-action="list-chats">GET /chat/users</button>
+                <button data-action="fetch-user-messages">GET /chat/users/:userId/messages</button>
+                <button data-action="send-user-message">POST /chat/users/:userId/messages</button>
+                <button data-action="presence-count">GET /chat/presence/online/count</button>
+                <button data-action="presence-user">GET /chat/presence/:userId</button>
+            </div>
+            <div>
+                <label for="restUserId">User ID (for trainer/admin calls)</label>
+                <input id="restUserId" type="text" placeholder="UUID">
+            </div>
+            <div>
+                <label for="restMessage">REST message payload</label>
+                <textarea id="restMessage" placeholder="Used by POST /chat/users/:userId/messages"></textarea>
+            </div>
+            <div class="two-col">
+                <label for="page">Page</label>
+                <input id="page" type="number" min="1" value="1">
+                <label for="limit">Limit</label>
+                <input id="limit" type="number" min="1" max="100" value="50">
+            </div>
+        </section>
+
+        <section style="grid-column: 1 / -1;">
+            <h2>Log</h2>
+            <div id="log"></div>
+        </section>
+    </main>
+
+    <script defer src="/socket-test.client.js"></script>
+</body>
+
+</html>
