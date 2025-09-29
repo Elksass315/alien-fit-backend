@@ -7,7 +7,16 @@ const disconnectBtn = document.getElementById('disconnectBtn');
 const heartbeatBtn = document.getElementById('heartbeatBtn');
 const clearLogBtn = document.getElementById('clearLogBtn');
 const sendMessageBtn = document.getElementById('sendMessageBtn');
-const restButtons = document.querySelectorAll('section:nth-of-type(3) button[data-action]');
+const restButtons = document.querySelectorAll('#restSection button[data-action]');
+const callOfferBtn = document.getElementById('callOfferBtn');
+const callAnswerBtn = document.getElementById('callAnswerBtn');
+const callIceBtn = document.getElementById('callIceBtn');
+const callEndBtn = document.getElementById('callEndBtn');
+const offerSdpTextarea = document.getElementById('offerSdp');
+const answerSdpTextarea = document.getElementById('answerSdp');
+const candidateTextarea = document.getElementById('iceCandidate');
+const callTargetUserIdInput = document.getElementById('callTargetUserId');
+const callEndReasonInput = document.getElementById('callEndReason');
 
 let socket = null;
 
@@ -34,6 +43,16 @@ function getSocketNamespace() {
 }
 function ensureSocket() {
     if (!socket || !socket.connected) throw new Error('Socket is not connected. Connect first.');
+}
+
+function parseJsonInput(raw, label) {
+    if (!raw) return null;
+    try {
+        return JSON.parse(raw);
+    } catch (error) {
+        const message = error instanceof Error ? error.message : String(error);
+        throw new Error(`Invalid ${label} JSON: ${message}`);
+    }
 }
 
 connectBtn.addEventListener('click', () => {
@@ -76,6 +95,18 @@ connectBtn.addEventListener('click', () => {
     socket.on('chat:message', (payload) => {
         log('Received chat:message', payload);
     });
+    socket.on('call:offer', (payload) => {
+        log('Received call:offer', payload);
+    });
+    socket.on('call:answer', (payload) => {
+        log('Received call:answer', payload);
+    });
+    socket.on('call:ice-candidate', (payload) => {
+        log('Received call:ice-candidate', payload);
+    });
+    socket.on('call:end', (payload) => {
+        log('Received call:end', payload);
+    });
 });
 
 disconnectBtn.addEventListener('click', () => {
@@ -109,6 +140,63 @@ sendMessageBtn.addEventListener('click', () => {
         log('Emitted chat:send', payload);
     } catch (error) {
         log('Emit failed', error.message);
+    }
+});
+
+callOfferBtn.addEventListener('click', () => {
+    try {
+        ensureSocket();
+        const offer = parseJsonInput(offerSdpTextarea.value.trim(), 'offer');
+        if (!offer) return log('Offer payload is required');
+        socket.emit('call:offer', { offer }, (response) => log('call:offer ack', response));
+        log('Emitted call:offer', { offer });
+    } catch (error) {
+        log('call:offer failed', error.message);
+    }
+});
+
+callAnswerBtn.addEventListener('click', () => {
+    try {
+        ensureSocket();
+        const targetUserId = callTargetUserIdInput.value.trim();
+        if (!targetUserId) throw new Error('Target user ID is required to answer');
+        const answer = parseJsonInput(answerSdpTextarea.value.trim(), 'answer');
+        if (!answer) throw new Error('Answer payload is required');
+        const payload = { userId: targetUserId, answer };
+        socket.emit('call:answer', payload, (response) => log('call:answer ack', response));
+        log('Emitted call:answer', payload);
+    } catch (error) {
+        log('call:answer failed', error.message);
+    }
+});
+
+callIceBtn.addEventListener('click', () => {
+    try {
+        ensureSocket();
+        const candidate = parseJsonInput(candidateTextarea.value.trim(), 'candidate');
+        if (!candidate) throw new Error('Candidate payload is required');
+        const payload = { candidate };
+        const targetUserId = callTargetUserIdInput.value.trim();
+        if (targetUserId) payload.userId = targetUserId;
+        socket.emit('call:ice-candidate', payload, (response) => log('call:ice-candidate ack', response));
+        log('Emitted call:ice-candidate', payload);
+    } catch (error) {
+        log('call:ice-candidate failed', error.message);
+    }
+});
+
+callEndBtn.addEventListener('click', () => {
+    try {
+        ensureSocket();
+        const payload = {};
+        const targetUserId = callTargetUserIdInput.value.trim();
+        if (targetUserId) payload.userId = targetUserId;
+        const reason = callEndReasonInput.value.trim();
+        if (reason) payload.reason = reason;
+        socket.emit('call:end', payload, (response) => log('call:end ack', response));
+        log('Emitted call:end', payload);
+    } catch (error) {
+        log('call:end failed', error.message);
     }
 });
 

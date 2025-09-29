@@ -175,7 +175,39 @@
             <button id="sendMessageBtn">Emit chat:send</button>
         </section>
 
-        <section>
+        <section id="callSection">
+            <h2>WebRTC Call Signaling</h2>
+            <p style="margin:0; color:#cbd5f5; font-size:0.85rem;">Paste SDP/ICE payloads to exercise call events.
+                Trainers/Admins must provide the target user ID. Users can leave it blank.</p>
+            <div>
+                <label for="callTargetUserId">Target User ID</label>
+                <input id="callTargetUserId" type="text" placeholder="Required when acting as trainer/admin">
+            </div>
+            <div>
+                <label for="offerSdp">Offer (JSON)</label>
+                <textarea id="offerSdp" placeholder='{"type":"offer","sdp":"..."}'></textarea>
+            </div>
+            <button id="callOfferBtn">Emit call:offer</button>
+            <div>
+                <label for="answerSdp">Answer (JSON)</label>
+                <textarea id="answerSdp" placeholder='{"type":"answer","sdp":"..."}'></textarea>
+            </div>
+            <button id="callAnswerBtn">Emit call:answer</button>
+            <div>
+                <label for="iceCandidate">ICE Candidate (JSON)</label>
+                <textarea id="iceCandidate" placeholder='{"candidate":"...","sdpMid":"0","sdpMLineIndex":0}'></textarea>
+            </div>
+            <div>
+                <label for="callEndReason">Call End Reason (optional)</label>
+                <input id="callEndReason" type="text" placeholder="e.g. cancelled, busy">
+            </div>
+            <div class="button-group">
+                <button id="callIceBtn" class="secondary">Emit call:ice-candidate</button>
+                <button id="callEndBtn" class="secondary">Emit call:end</button>
+            </div>
+        </section>
+
+        <section id="restSection">
             <h2>REST Helpers</h2>
             <div class="button-group">
                 <button data-action="fetch-me">GET /chat/me</button>
