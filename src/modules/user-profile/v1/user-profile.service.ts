@@ -3,6 +3,7 @@ import { StatusCodes } from 'http-status-codes';
 import { UserProfileEntity } from './model/user-profile.model.js';
 import { UserEntity } from '../../user/v1/entity/user.entity.js';
 import { UserService } from '../../user/v1/user.service.js';
+import { MediaEntity } from '../../media/v1/model/media.model.js';
 
 export class UserProfileService {
   static async getUserProfile(userId: string | number): Promise<UserProfileEntity> {
@@ -19,6 +20,13 @@ export class UserProfileService {
 
     // Check if profile exists
     let profile = await UserProfileEntity.findOne({ where: { userId } });
+
+    if (profileData.inbodyImageId !== null) {
+      const media = await MediaEntity.findByPk(profileData.inbodyImageId);
+      if (!media) {
+        throw new HttpResponseError(StatusCodes.BAD_REQUEST, "inbodyImageId not found")
+      }
+    }
 
     if (profile) {
       // Update existing profile

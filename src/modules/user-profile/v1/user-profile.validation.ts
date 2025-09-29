@@ -80,6 +80,9 @@ export const userProfileSchema = Joi.object({
     }),
     preferredFood: preferredFoodSchema,
     training: trainingSchema,
+    inbodyImageId: Joi.string().allow(null).optional().messages({
+        'string.base': 'Inbody image ID must be a string',
+    }),
 });
 
 export const createUpdateUserProfileSchema = userProfileSchema;
