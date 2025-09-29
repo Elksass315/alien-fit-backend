@@ -2,6 +2,27 @@ import { DataTypes, Model } from 'sequelize';
 import { sequelize } from '../../../../database/db-config.js';
 import { UserEntity } from '../../../user/v1/entity/user.entity.js';
 
+type PreferredFood = {
+    meats: string[] | null;
+    carbs: string[] | null;
+    fruits: string[] | null;
+    vegetables: string[] | null;
+    dairy: string[] | null;
+    legumes: string[] | null;
+    others: string[] | null;
+} | null;
+
+type TrainingPreferences = {
+    teamSport: string[] | null;
+    individualSports: string[] | null;
+    combatSports: string[] | null;
+    strengthAndFitness: string[] | null;
+    waterSports: string[] | null;
+    outdoorAndExtreme: string[] | null;
+    winterSports: string[] | null;
+    other: string[] | null;
+} | null;
+
 export class UserProfileEntity extends Model {
     declare id: string;
     declare userId: number;
@@ -19,13 +40,8 @@ export class UserProfileEntity extends Model {
     declare typesOfExercises: string[] | null;
     declare useSupplements: boolean | null;
     declare intolerances: string[] | null;
-    declare meats: string[] | null;
-    declare carbs: string[] | null;
-    declare fruits: string[] | null;
-    declare vegetables: string[] | null;
-    declare dairy: string[] | null;
-    declare legumes: string[] | null;
-    declare others: string[] | null;
+    declare preferredFood: PreferredFood;
+    declare training: TrainingPreferences;
 }
 
 UserProfileEntity.init(
@@ -48,13 +64,8 @@ UserProfileEntity.init(
         useSupplements: { type: DataTypes.BOOLEAN }, // e.g. false
 
         intolerances: { type: DataTypes.JSONB }, // e.g. ["Gluten", "Fish", "Fruit"]
-        meats: { type: DataTypes.JSONB },        // ["Chicken", "Beef"]
-        carbs: { type: DataTypes.JSONB },
-        fruits: { type: DataTypes.JSONB },
-        vegetables: { type: DataTypes.JSONB },
-        dairy: { type: DataTypes.JSONB },
-        legumes: { type: DataTypes.JSONB },
-        others: { type: DataTypes.JSONB },
+        preferredFood: { type: DataTypes.JSONB }, // e.g. { meats: ["Chicken"], carbs: ["Rice"], ... }
+        training: { type: DataTypes.JSONB }, // e.g. { teamSport: ["Football"], ... }
     },
     {
         sequelize,

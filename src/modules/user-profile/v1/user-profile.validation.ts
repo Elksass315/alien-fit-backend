@@ -1,6 +1,40 @@
 import Joi from 'joi';
 import { JoiCustomValidateObjectId } from '../../../utils/joi-custom-validate-object-id.js';
 
+const stringListField = (label: string) => Joi.array().items(Joi.string()).allow(null).optional().messages({
+    'array.base': `${label} must be an array of strings`,
+});
+
+const preferredFoodSchema = Joi.object({
+    meats: stringListField('Meats'),
+    carbs: stringListField('Carbs'),
+    fruits: stringListField('Fruits'),
+    vegetables: stringListField('Vegetables'),
+    dairy: stringListField('Dairy'),
+    legumes: stringListField('Legumes'),
+    others: stringListField('Others'),
+})
+    .allow(null)
+    .optional()
+    .messages({
+        'object.base': 'Preferred food must be an object',
+    });
+
+const trainingSchema = Joi.object({
+    teamSport: stringListField('Team sport'),
+    individualSports: stringListField('Individual sports'),
+    combatSports: stringListField('Combat sports'),
+    strengthAndFitness: stringListField('Strength & Fitness'),
+    waterSports: stringListField('Water sports'),
+    outdoorAndExtreme: stringListField('Outdoor & Extreme'),
+    winterSports: stringListField('Winter sports'),
+    other: stringListField('Other'),
+})
+    .allow(null)
+    .optional()
+    .messages({
+        'object.base': 'Training must be an object',
+    });
 
 export const userProfileSchema = Joi.object({
     userId: JoiCustomValidateObjectId('User ID', true),
@@ -44,27 +78,8 @@ export const userProfileSchema = Joi.object({
     intolerances: Joi.array().items(Joi.string()).allow(null).optional().messages({
         'array.base': 'Intolerances must be an array of strings',
     }),
-    meats: Joi.array().items(Joi.string()).allow(null).optional().messages({
-        'array.base': 'Meats must be an array of strings',
-    }),
-    carbs: Joi.array().items(Joi.string()).allow(null).optional().messages({
-        'array.base': 'Carbs must be an array of strings',
-    }),
-    fruits: Joi.array().items(Joi.string()).allow(null).optional().messages({
-        'array.base': 'Fruits must be an array of strings',
-    }),
-    vegetables: Joi.array().items(Joi.string()).allow(null).optional().messages({
-        'array.base': 'Vegetables must be an array of strings',
-    }),
-    dairy: Joi.array().items(Joi.string()).allow(null).optional().messages({
-        'array.base': 'Dairy must be an array of strings',
-    }),
-    legumes: Joi.array().items(Joi.string()).allow(null).optional().messages({
-        'array.base': 'Legumes must be an array of strings',
-    }),
-    others: Joi.array().items(Joi.string()).allow(null).optional().messages({
-        'array.base': 'Others must be an array of strings',
-    }),
+    preferredFood: preferredFoodSchema,
+    training: trainingSchema,
 });
 
 export const createUpdateUserProfileSchema = userProfileSchema;

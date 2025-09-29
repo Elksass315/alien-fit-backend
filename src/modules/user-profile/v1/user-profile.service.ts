@@ -62,6 +62,16 @@ export class UserProfileService {
 
   private static checkProfileCompletion(profile: UserProfileEntity): boolean {
     // Check if all required fields are filled (update as needed for your business logic)
+    const hasPreferredFood = !!(
+      profile.preferredFood &&
+      Object.values(profile.preferredFood).some((items) => Array.isArray(items) && items.length > 0)
+    );
+
+    const hasTrainingPreferences = !!(
+      profile.training &&
+      Object.values(profile.training).some((items) => Array.isArray(items) && items.length > 0)
+    );
+
     return !!(
       profile.goal &&
       profile.activityLevel &&
@@ -75,13 +85,8 @@ export class UserProfileService {
       profile.typesOfExercises &&
       typeof profile.useSupplements === 'boolean' &&
       profile.intolerances &&
-      profile.meats &&
-      profile.carbs &&
-      profile.fruits &&
-      profile.vegetables &&
-      profile.dairy &&
-      profile.legumes &&
-      profile.others
+      hasPreferredFood &&
+      hasTrainingPreferences
     );
   }
 }
