@@ -10,6 +10,8 @@ type PreferredFood = {
     vegetables: string[] | null;
     dairy: string[] | null;
     legumes: string[] | null;
+    mealsCount: number | null;
+    snacksCount: number | null;
     others: string[] | null;
 } | null;
 
@@ -31,6 +33,7 @@ export class UserProfileEntity extends Model {
     declare whatDoYouWantToAchieve: string | null;
     declare goal: string | null;
     declare activityLevel: string | null;
+    declare trainingLevel: string | null;
     declare bodyFat: string | null;
     declare trainingSite: string | null;
     declare preferredWorkoutTime: Record<string, string> | null;
@@ -38,7 +41,6 @@ export class UserProfileEntity extends Model {
     declare injuries: string[] | null;
     declare diseases: string[] | null;
     declare workOutBefore: boolean | null;
-    declare typesOfExercises: string[] | null;
     declare useSupplements: boolean | null;
     declare intolerances: string[] | null;
     declare preferredFood: PreferredFood;
@@ -54,6 +56,7 @@ UserProfileEntity.init(
         whatDoYouWantToAchieve: { type: DataTypes.STRING },
         goal: { type: DataTypes.STRING },
         activityLevel: { type: DataTypes.STRING },
+        trainingLevel: { type: DataTypes.STRING },
         bodyFat: { type: DataTypes.STRING },
         trainingSite: { type: DataTypes.STRING },
         preferredWorkoutTime: { type: DataTypes.JSONB }, // e.g. { "Monday": "8:00 AM", ... }
@@ -62,7 +65,6 @@ UserProfileEntity.init(
         injuries: { type: DataTypes.JSONB },      // e.g. ["Knee", "Back"]
         diseases: { type: DataTypes.JSONB },     // e.g. ["Respiratory Issues"]
         workOutBefore: { type: DataTypes.BOOLEAN }, // e.g. true
-        typesOfExercises: { type: DataTypes.JSONB }, // e.g. ["Cardio", "Strength Training"]
         useSupplements: { type: DataTypes.BOOLEAN }, // e.g. false
 
         intolerances: { type: DataTypes.JSONB }, // e.g. ["Gluten", "Fish", "Fruit"]

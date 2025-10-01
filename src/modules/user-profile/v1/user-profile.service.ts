@@ -83,6 +83,7 @@ export class UserProfileService {
     return !!(
       profile.goal &&
       profile.activityLevel &&
+      profile.trainingLevel &&
       profile.bodyFat &&
       profile.trainingSite &&
       profile.preferredWorkoutTime &&
@@ -90,7 +91,6 @@ export class UserProfileService {
       profile.injuries &&
       profile.diseases &&
       typeof profile.workOutBefore === 'boolean' &&
-      profile.typesOfExercises &&
       typeof profile.useSupplements === 'boolean' &&
       profile.intolerances &&
       hasPreferredFood &&

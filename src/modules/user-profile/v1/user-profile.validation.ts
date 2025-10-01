@@ -12,6 +12,12 @@ const preferredFoodSchema = Joi.object({
     vegetables: stringListField('Vegetables'),
     dairy: stringListField('Dairy'),
     legumes: stringListField('Legumes'),
+    mealsCount: Joi.number().integer().min(0).allow(null).optional().messages({
+        'number.base': 'Meals count must be a number',
+    }),
+    snacksCount: Joi.number().integer().min(0).allow(null).optional().messages({
+        'number.base': 'Snacks count must be a number',
+    }),
     others: stringListField('Others'),
 })
     .allow(null)
@@ -48,6 +54,9 @@ export const userProfileSchema = Joi.object({
     activityLevel: Joi.string().allow(null).optional().messages({
         'string.base': 'Activity level must be a string',
     }),
+    trainingLevel: Joi.string().allow(null).optional().messages({
+        'string.base': 'Training level must be a string',
+    }),
     bodyFat: Joi.string().allow(null).optional().messages({
         'string.base': 'Body fat must be a string',
     }),
@@ -68,9 +77,6 @@ export const userProfileSchema = Joi.object({
     }),
     workOutBefore: Joi.boolean().allow(null).optional().messages({
         'boolean.base': 'workOutBefore must be a boolean',
-    }),
-    typesOfExercises: Joi.array().items(Joi.string()).allow(null).optional().messages({
-        'array.base': 'Types of exercises must be an array of strings',
     }),
     useSupplements: Joi.boolean().allow(null).optional().messages({
         'boolean.base': 'useSupplements must be a boolean',
