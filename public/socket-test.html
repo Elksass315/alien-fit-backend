@@ -143,6 +143,13 @@
                 <input id="socketPath" type="text" value="/" placeholder="/">
             </div>
             <div>
+                <label for="transportMode">Transport Strategy</label>
+                <select id="transportMode">
+                    <option value="auto">Auto (polling + websocket)</option>
+                    <option value="websocket">WebSocket only</option>
+                </select>
+            </div>
+            <div>
                 <label for="accessToken">JWT Access Token</label>
                 <textarea id="accessToken" placeholder="Paste bearer token here"></textarea>
             </div>
