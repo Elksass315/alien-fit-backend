@@ -40,7 +40,7 @@ export class UserProfileService {
     }
 
     // Check if profile is complete
-    const isProfileComplete = this.checkProfileCompletion(profile);
+    const isProfileComplete = true
 
     // Update user's isProfileComplete status if needed
     await UserEntity.update(
@@ -66,35 +66,5 @@ export class UserProfileService {
     );
 
     return profile;
-  }
-
-  private static checkProfileCompletion(profile: UserProfileEntity): boolean {
-    // Check if all required fields are filled (update as needed for your business logic)
-    const hasPreferredFood = !!(
-      profile.preferredFood &&
-      Object.values(profile.preferredFood).some((items) => Array.isArray(items) && items.length > 0)
-    );
-
-    const hasTrainingPreferences = !!(
-      profile.training &&
-      Object.values(profile.training).some((items) => Array.isArray(items) && items.length > 0)
-    );
-
-    return !!(
-      profile.goal &&
-      profile.activityLevel &&
-      profile.trainingLevel &&
-      profile.bodyFat &&
-      profile.trainingSite &&
-      profile.preferredWorkoutTime &&
-      profile.tools &&
-      profile.injuries &&
-      profile.diseases &&
-      typeof profile.workOutBefore === 'boolean' &&
-      typeof profile.useSupplements === 'boolean' &&
-      profile.intolerances &&
-      hasPreferredFood &&
-      hasTrainingPreferences
-    );
   }
 }
