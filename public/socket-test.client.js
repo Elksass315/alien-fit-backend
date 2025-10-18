@@ -7,6 +7,7 @@ const disconnectBtn = document.getElementById('disconnectBtn');
 const heartbeatBtn = document.getElementById('heartbeatBtn');
 const clearLogBtn = document.getElementById('clearLogBtn');
 const sendMessageBtn = document.getElementById('sendMessageBtn');
+const transportModeSelect = document.getElementById('transportMode');
 const restButtons = document.querySelectorAll('#restSection button[data-action]');
 const callOfferBtn = document.getElementById('callOfferBtn');
 const callAnswerBtn = document.getElementById('callAnswerBtn');
@@ -41,6 +42,7 @@ function getSocketNamespace() {
     if (!raw) return '/';
     return raw.startsWith('/') ? raw : `/${raw}`;
 }
+function getTransportMode() { return transportModeSelect?.value || 'auto'; }
 function ensureSocket() {
     if (!socket || !socket.connected) throw new Error('Socket is not connected. Connect first.');
 }
@@ -58,22 +60,27 @@ function parseJsonInput(raw, label) {
 connectBtn.addEventListener('click', () => {
     const token = getAccessToken();
     const namespace = getSocketNamespace();
+    const transportMode = getTransportMode();
     const baseUrl = getBaseUrl();
 
     if (socket?.connected) socket.disconnect();
 
-    log('Attempting socket connection...', { baseUrl, namespace });
+    log('Attempting socket connection...', { baseUrl, namespace, transportMode });
 
     try {
         if (typeof io !== 'function') {
             throw new Error('socket.io client library not loaded (check /socket.io/socket.io.js network request)');
         }
-        log('Creating socket client...');
-        socket = io(baseUrl + namespace, {
-            transports: ['websocket'],
+        const connectionOptions = {
             auth: token ? { token } : undefined,
             query: token ? { token } : undefined,
-        });
+            withCredentials: true,
+            reconnectionAttempts: 3,
+        };
+        if (transportMode === 'websocket') {
+            connectionOptions.transports = ['websocket'];
+        }
+        socket = io(baseUrl + namespace, connectionOptions);
     } catch (e) {
         log('Socket creation failed', e.message);
         return;
@@ -82,11 +89,18 @@ connectBtn.addEventListener('click', () => {
     log('Socket instance created (waiting for connect)');
     socket.on('connect', () => {
         setStatus(`connected (id: ${socket.id})`);
-        log('Socket connected', { id: socket.id });
+        const currentTransport = socket?.io?.engine?.transport?.name;
+        log('Socket connected', { id: socket.id, transport: currentTransport });
     });
     socket.on('connect_error', (error) => {
         setStatus('connection error');
-        log('Connect error', error.message || error);
+        const details = {
+            message: error?.message,
+            description: error?.description,
+            context: error?.context,
+            data: error?.data,
+        };
+        log('Connect error', details);
     });
     socket.on('disconnect', (reason) => {
         setStatus(`disconnected (${reason})`);
@@ -95,6 +109,16 @@ connectBtn.addEventListener('click', () => {
     socket.on('chat:message', (payload) => {
         log('Received chat:message', payload);
     });
+
+    if (socket?.io?.engine) {
+        socket.io.engine.on('upgrade', (transport) => {
+            log('Transport upgraded', transport.name);
+        });
+        socket.io.engine.transport?.on('error', (event) => {
+            log('Engine transport error', event?.message || event);
+        });
+    }
+
     socket.on('call:offer', (payload) => {
         log('Received call:offer', payload);
     });

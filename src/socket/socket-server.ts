@@ -1,4 +1,5 @@
 import { Server as HTTPServer } from 'http';
+import type { IncomingMessage } from 'http';
 import { Server as SocketIOServer, Socket } from 'socket.io';
 import { authenticateAccessToken } from '../utils/auth.utils.js';
 import { Roles } from '../constants/roles.js';
@@ -43,7 +44,7 @@ const activeCallSessions = new Map<string, CallSession>();
 export function initializeSocketServer(server: HTTPServer) {
     const io = new SocketIOServer(server, {
         cors: {
-            origin: "*",
+            origin: '*',
             credentials: true,
         },
     });
@@ -61,6 +62,29 @@ export function initializeSocketServer(server: HTTPServer) {
             console.log('Socket authentication error:', error);
             next(error as Error);
         }
+    });
+
+    io.engine.on('connection_error', (err) => {
+        const engineError = err as {
+            code?: string;
+            message: string;
+            context?: unknown;
+            req?: IncomingMessage;
+        };
+        const requestInfo = engineError.req
+            ? {
+                url: engineError.req.url,
+                origin: engineError.req.headers.origin,
+                userAgent: engineError.req.headers['user-agent'],
+                remoteAddress: engineError.req.socket?.remoteAddress,
+            }
+            : undefined;
+        console.error('Socket engine connection error', {
+            code: engineError.code,
+            message: engineError.message,
+            context: engineError.context,
+            request: requestInfo,
+        });
     });
 
     io.on('connection', async (socket) => {

@@ -3,6 +3,7 @@ import { StatusCodes } from 'http-status-codes';
 import { UserProfileEntity } from './model/user-profile.model.js';
 import { UserEntity } from '../../user/v1/entity/user.entity.js';
 import { UserService } from '../../user/v1/user.service.js';
+import { MediaEntity } from '../../media/v1/model/media.model.js';
 
 export class UserProfileService {
   static async getUserProfile(userId: string | number): Promise<UserProfileEntity> {
@@ -20,6 +21,13 @@ export class UserProfileService {
     // Check if profile exists
     let profile = await UserProfileEntity.findOne({ where: { userId } });
 
+    if (profileData.inbodyImageId !== null) {
+      const media = await MediaEntity.findByPk(profileData.inbodyImageId);
+      if (!media) {
+        throw new HttpResponseError(StatusCodes.BAD_REQUEST, "inbodyImageId not found")
+      }
+    }
+
     if (profile) {
       // Update existing profile
       await profile.update(profileData);
@@ -32,7 +40,7 @@ export class UserProfileService {
     }
 
     // Check if profile is complete
-    const isProfileComplete = this.checkProfileCompletion(profile);
+    const isProfileComplete = true
 
     // Update user's isProfileComplete status if needed
     await UserEntity.update(
@@ -58,30 +66,5 @@ export class UserProfileService {
     );
 
     return profile;
-  }
-
-  private static checkProfileCompletion(profile: UserProfileEntity): boolean {
-    // Check if all required fields are filled (update as needed for your business logic)
-    return !!(
-      profile.goal &&
-      profile.activityLevel &&
-      profile.bodyFat &&
-      profile.trainingSite &&
-      profile.preferredWorkoutTime &&
-      profile.tools &&
-      profile.injuries &&
-      profile.diseases &&
-      typeof profile.workOutBefore === 'boolean' &&
-      profile.typesOfExercises &&
-      typeof profile.useSupplements === 'boolean' &&
-      profile.intolerances &&
-      profile.meats &&
-      profile.carbs &&
-      profile.fruits &&
-      profile.vegetables &&
-      profile.dairy &&
-      profile.legumes &&
-      profile.others
-    );
   }
 }
