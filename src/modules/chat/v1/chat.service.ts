@@ -1,6 +1,6 @@
 import { FindAndCountOptions } from 'sequelize';
 import { ChatEntity } from './entity/chat.entity.js';
-import { MessageEntity, SenderRole } from './entity/message.entity.js';
+import { MessageEntity, MessageType, SenderRole } from './entity/message.entity.js';
 import './entity/associate-models.js';
 import { UserService } from '../../user/v1/user.service.js';
 import { HttpResponseError } from '../../../utils/appError.js';
@@ -18,6 +18,7 @@ export interface SendMessagePayload {
     senderId: string;
     senderRole: SenderRole;
     content: string;
+    messageType?: MessageType;
 }
 
 const DEFAULT_PAGE_SIZE = 50;
@@ -34,7 +35,8 @@ export class ChatService {
     }
 
     static async sendMessage(payload: SendMessagePayload): Promise<{ chat: ChatEntity; message: MessageEntity; }> {
-        if (!payload.content?.trim()) {
+        const trimmedContent = payload.content?.trim();
+        if (!trimmedContent) {
             throw new HttpResponseError(StatusCodes.BAD_REQUEST, 'Message content is required');
         }
 
@@ -44,16 +46,19 @@ export class ChatService {
 
         const chat = await this.getOrCreateUserChat(payload.userId);
 
+        const messageType: MessageType = payload.messageType ?? 'text';
+
         const message = await MessageEntity.create({
             chatId: chat.id,
             senderId: payload.senderId,
             senderRole: payload.senderRole,
-            content: payload.content.trim(),
+            messageType,
+            content: trimmedContent,
         });
 
         await chat.update({
             lastMessageAt: message.createdAt,
-            lastMessagePreview: payload.content.substring(0, 280),
+            lastMessagePreview: trimmedContent.substring(0, 280),
         });
 
         return { chat, message };

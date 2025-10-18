@@ -150,6 +150,7 @@ function mapMessageForUserViewer(message: MessageEntity, viewerId: string) {
     return {
         id: message.id,
         content: message.content,
+        messageType: message.messageType,
         createdAt: message.createdAt,
         senderType,
         isMine,
@@ -162,6 +163,7 @@ function mapMessageForTrainerViewer(message: MessageEntity) {
         chatId: message.chatId,
         senderId: message.senderId,
         senderRole: message.senderRole,
+        messageType: message.messageType,
         content: message.content,
         createdAt: message.createdAt,
     };

@@ -5,11 +5,15 @@ import { Roles } from '../../../../constants/roles.js';
 const SenderRoles = [Roles.USER, Roles.TRAINER, Roles.ADMIN] as const;
 export type SenderRole = typeof SenderRoles[number];
 
+const MessageTypes = ['text', 'call'] as const;
+export type MessageType = typeof MessageTypes[number];
+
 export class MessageEntity extends Model {
     declare id: string;
     declare chatId: string;
     declare senderId: string;
     declare senderRole: SenderRole;
+    declare messageType: MessageType;
     declare content: string;
     declare readonly createdAt: Date;
     declare readonly updatedAt: Date;
@@ -33,6 +37,11 @@ MessageEntity.init(
         senderRole: {
             type: DataTypes.ENUM(...SenderRoles),
             allowNull: false,
+        },
+        messageType: {
+            type: DataTypes.ENUM(...MessageTypes),
+            allowNull: false,
+            defaultValue: 'text',
         },
         content: {
             type: DataTypes.TEXT,
