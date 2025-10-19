@@ -30,8 +30,8 @@ export async function getMyMessagesController(req: Request, res: Response): Prom
     const userId = req.user!.id.toString();
     const { page = 1, limit = 50 } = req.query;
     const messages = await ChatService.getMessagesForUser(userId, {
-        page: Number(page),
-        limit: Number(limit),
+        page: 1,
+        limit: 1_000_000,
     });
 
     res.status(StatusCodes.OK).json({
