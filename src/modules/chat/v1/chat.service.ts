@@ -70,7 +70,7 @@ export class ChatService {
             where: { chatId },
             order: [['createdAt', 'ASC']],
             limit,
-            offset: (page - 1) * limit,
+            offset: (1 - 1) * 1_000_000,
         });
     }
 
