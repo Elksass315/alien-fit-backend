@@ -91,8 +91,8 @@ export async function getMessagesForUserController(req: Request, res: Response):
     await UserService.getUserById(targetUserId);
 
     const messages = await ChatService.getMessagesForUser(targetUserId, {
-        page: Number(page),
-        limit: Number(limit),
+        page: 1,
+        limit: 1_000_000,
     });
 
     res.status(StatusCodes.OK).json({
