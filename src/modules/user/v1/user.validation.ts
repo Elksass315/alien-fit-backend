@@ -62,6 +62,10 @@ export const userValidationSchema = Joi.object({
     }),
     isBlocked: Joi.boolean().optional().messages({
         'boolean.base': 'isBlocked must be a boolean',
+    }),
+    imageId: Joi.string().uuid().allow(null).optional().messages({
+        'string.base': 'Image ID must be a string',
+        'string.guid': 'Image ID must be a valid UUID'
     })
 });
 

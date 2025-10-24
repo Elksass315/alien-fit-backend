@@ -4,6 +4,7 @@ import { Roles } from '../../../../constants/roles.js';
 import { comparePasswords, hashPassword } from '../../../../utils/password.utils.js';
 import { generateAuthToken, generateRefreshToken } from '../../../../utils/token.utils.js';
 import { UserSessionEntity } from '../../../user-session/v1/entity/user-session.entity.js';
+import { MediaEntity } from '../../../media/v1/model/media.model.js';
 
 
 // ---------- Model ----------
@@ -21,6 +22,7 @@ export class UserEntity extends Model {
     declare isVerified: boolean;
     declare isBlocked: boolean;
     declare isProfileComplete?: boolean;
+    declare imageId?: string | null;
 
     // timestamps
     declare readonly createdAt: Date;
@@ -107,6 +109,10 @@ UserEntity.init(
             type: DataTypes.BOOLEAN,
             defaultValue: false,
         },
+        imageId: {
+            type: DataTypes.UUID,
+            allowNull: true,
+        },
     },
     {
         sequelize,
@@ -130,3 +136,8 @@ UserEntity.beforeSave(async (user: UserEntity) => {
         user.password = await hashPassword(user.password);
     }
 });
+
+// ---------- Relations ----------
+// Media relation for user image
+UserEntity.belongsTo(MediaEntity, { foreignKey: 'imageId', as: 'image' });
+MediaEntity.hasMany(UserEntity, { foreignKey: 'imageId', as: 'users' });

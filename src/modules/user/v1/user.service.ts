@@ -3,6 +3,7 @@ import { StatusCodes } from 'http-status-codes';
 import { UserEntity } from './entity/user.entity.js';
 import { isStrongPassword } from '../../../utils/password.utils.js';
 import { Op } from 'sequelize';
+import { MediaEntity } from '../../media/v1/model/media.model.js';
 
 
 interface PaginateOptions {
@@ -34,6 +35,14 @@ export class UserService {
             throw new HttpResponseError(StatusCodes.UNPROCESSABLE_ENTITY, 'Password must be at least 8 characters long and include uppercase, lowercase, number, and special character');
         }
 
+        // Validate imageId if provided
+        if (userData.imageId !== undefined && userData.imageId !== null) {
+            const media = await MediaEntity.findByPk(userData.imageId);
+            if (!media) {
+                throw new HttpResponseError(StatusCodes.BAD_REQUEST, 'Image not found');
+            }
+        }
+
         const user = new UserEntity(userData);
         await user.save();
         return this.getUserById(user.id.toString());
@@ -57,6 +66,15 @@ export class UserService {
         if (!user) {
             throw new HttpResponseError(StatusCodes.NOT_FOUND, 'User not found');
         }
+
+        // Validate imageId if provided
+        if (updateData.imageId !== undefined && updateData.imageId !== null) {
+            const media = await MediaEntity.findByPk(updateData.imageId);
+            if (!media) {
+                throw new HttpResponseError(StatusCodes.BAD_REQUEST, 'Image not found');
+            }
+        }
+
         await user.update(updateData);
         return this.getUserById(user.id.toString());
     }
