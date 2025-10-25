@@ -1,8 +1,17 @@
 const ICE_SERVERS = [
-    { urls: "stun:192.168.1.47:3478" },
-    { urls: "turn:192.168.1.47:3478?transport=udp", username: "test", credential: "testpass" },
-    { urls: "turn:192.168.1.47:3478?transport=tcp", username: "test", credential: "testpass" },
+    { urls: "stun:back-dev.alien-fit.com:3478" },
+    {
+        urls: "turn:back-dev.alien-fit.com:3478?transport=udp",
+        username: "test",
+        credential: "testpass"
+    },
+    {
+        urls: "turn:back-dev.alien-fit.com:5349?transport=tcp",
+        username: "test",
+        credential: "testpass"
+    }
 ];
+
 
 const socket = io({
     auth: {
