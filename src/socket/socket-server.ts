@@ -30,6 +30,7 @@ interface CallSession {
 }
 
 type CallTerminator = 'user' | 'trainer' | 'system';
+type CallHistoryStatus = 'started' | 'answered' | 'ended' | 'missed';
 
 declare module 'socket.io' {
     interface SocketData {
@@ -165,7 +166,11 @@ export function initializeSocketServer(server: HTTPServer) {
                     userId,
                     senderId: userId,
                     senderRole: Roles.USER as SenderRole,
-                    content: 'Outgoing call',
+                    status: 'started',
+                    metadata: {
+                        direction: 'outgoing',
+                        initiatorId: userId,
+                    },
                 });
 
                 await PresenceService.heartbeat(userId);
@@ -193,7 +198,10 @@ export function initializeSocketServer(server: HTTPServer) {
                     throw new HttpResponseError(403, 'Only trainers or admins can answer calls');
                 }
 
-                const { userId: targetUserId, answer } = payload as { userId?: string; answer?: unknown };
+                const { userId: payloadUserId, target, answer } = payload as { userId?: string; target?: string; answer?: unknown };
+                const normalizedTarget = typeof target === 'string' ? target.trim() : undefined;
+                const targetUserId = payloadUserId ?? (normalizedTarget && normalizedTarget !== TRAINERS_ROOM ? normalizedTarget : undefined);
+
                 if (!targetUserId) {
                     throw new HttpResponseError(400, 'Target userId is required');
                 }
@@ -217,7 +225,10 @@ export function initializeSocketServer(server: HTTPServer) {
                     userId: targetUserId,
                     senderId: userId,
                     senderRole: role as SenderRole,
-                    content: 'Incoming call answered',
+                    status: 'answered',
+                    metadata: {
+                        trainerId: userId,
+                    },
                 });
 
                 await PresenceService.heartbeat(userId);
@@ -226,7 +237,9 @@ export function initializeSocketServer(server: HTTPServer) {
                     answer,
                     trainer: {
                         label: 'trainer',
+                        id: userId,
                     },
+                    userId: targetUserId,
                 });
 
                 callback?.({ status: 'ok' });
@@ -237,31 +250,40 @@ export function initializeSocketServer(server: HTTPServer) {
 
         socket.on(CALL_ICE_CANDIDATE_EVENT, (payload, callback) => {
             try {
-                const { candidate, userId: targetUserId } = payload as { candidate?: unknown; userId?: string };
+                const { candidate, userId: payloadUserId, target } = payload as { candidate?: unknown; userId?: string; target?: string };
                 if (!candidate) {
                     throw new HttpResponseError(400, 'ICE candidate is required');
                 }
 
+                const normalizedPayloadUserId = typeof payloadUserId === 'string' ? payloadUserId.trim() : undefined;
+                const normalizedTarget = typeof target === 'string' ? target.trim() : undefined;
+                const resolvedTarget = normalizedTarget ?? normalizedPayloadUserId;
+
                 if (role === Roles.USER) {
                     const session = activeCallSessions.get(userId);
-                    if (!session || !session.trainerSocketId) {
-                        throw new HttpResponseError(404, 'No trainer is connected to this call yet');
+                    if (session?.trainerSocketId) {
+                        io.to(session.trainerSocketId).emit(CALL_ICE_CANDIDATE_EVENT, {
+                            userId,
+                            candidate,
+                        });
+                    } else {
+                        io.to(TRAINERS_ROOM).emit(CALL_ICE_CANDIDATE_EVENT, {
+                            userId,
+                            candidate,
+                        });
                     }
-                    io.to(session.trainerSocketId).emit(CALL_ICE_CANDIDATE_EVENT, {
-                        userId,
-                        candidate,
-                    });
                 } else if ([Roles.TRAINER, Roles.ADMIN].includes(role)) {
+                    const targetUserId = resolvedTarget && resolvedTarget !== TRAINERS_ROOM ? resolvedTarget : undefined;
                     if (!targetUserId) {
                         throw new HttpResponseError(400, 'Target userId is required');
                     }
 
                     const session = activeCallSessions.get(targetUserId);
-                    if (!session || session.trainerSocketId !== socket.id) {
+                    if (session && session.trainerSocketId && session.trainerSocketId !== socket.id) {
                         throw new HttpResponseError(403, 'You are not attached to this call');
                     }
 
-                    io.to(session.initiatorSocketId).emit(CALL_ICE_CANDIDATE_EVENT, {
+                    io.to(getUserRoom(targetUserId)).emit(CALL_ICE_CANDIDATE_EVENT, {
                         candidate,
                     });
                 } else {
@@ -276,14 +298,17 @@ export function initializeSocketServer(server: HTTPServer) {
 
         socket.on(CALL_END_EVENT, async (payload, callback) => {
             try {
-                const { reason, userId: targetUserId } = payload as { reason?: string; userId?: string };
+                const { reason, status, userId: payloadUserId, target } = payload as { reason?: string; status?: string; userId?: string; target?: string };
+                const normalizedTarget = typeof target === 'string' ? target.trim() : undefined;
+                const targetUserId = payloadUserId ?? (normalizedTarget && normalizedTarget !== TRAINERS_ROOM ? normalizedTarget : undefined);
+                const resolvedReason = reason ?? status;
 
                 if (role === Roles.USER) {
                     const ended = await finalizeCallSession(userId, {
                         actorId: userId,
                         actorRole: Roles.USER as SenderRole,
                         endedBy: 'user',
-                        reason,
+                        reason: resolvedReason,
                         refreshPresence: true,
                     });
 
@@ -302,7 +327,7 @@ export function initializeSocketServer(server: HTTPServer) {
                         actorId: userId,
                         actorRole: role as SenderRole,
                         endedBy: 'trainer',
-                        reason,
+                        reason: resolvedReason,
                         refreshPresence: true,
                     });
 
@@ -348,12 +373,19 @@ export function initializeSocketServer(server: HTTPServer) {
 
     // Persist each call lifecycle step as a chat message so WhatsApp-style history
     // appears inline with the rest of the conversation.
-    async function recordCallHistoryMessage(params: { userId: string; senderId: string; senderRole: SenderRole; content: string; }) {
+    async function recordCallHistoryMessage(params: { userId: string; senderId: string; senderRole: SenderRole; status: CallHistoryStatus; metadata?: Record<string, unknown>; }) {
+        const messageContent = JSON.stringify({
+            type: 'call',
+            status: params.status,
+            timestamp: new Date().toISOString(),
+            ...(params.metadata ?? {}),
+        });
+
         const { message } = await ChatService.sendMessage({
             userId: params.userId,
             senderId: params.senderId,
             senderRole: params.senderRole,
-            content: params.content,
+            content: messageContent,
             messageType: 'call',
         });
 
@@ -370,13 +402,19 @@ export function initializeSocketServer(server: HTTPServer) {
         }
 
         activeCallSessions.delete(userId);
-        const content = session.status === 'active' ? 'Call ended' : 'Missed call';
+        const status: CallHistoryStatus = session.status === 'active' ? 'ended' : 'missed';
 
         await recordCallHistoryMessage({
             userId,
             senderId: options.actorId,
             senderRole: options.actorRole,
-            content,
+            status,
+            metadata: {
+                endedBy: options.endedBy,
+                reason: options.reason,
+                initiatorId: session.initiatorId,
+                trainerId: session.trainerId,
+            },
         });
 
         if (options.refreshPresence) {
@@ -387,6 +425,7 @@ export function initializeSocketServer(server: HTTPServer) {
             userId,
             endedBy: options.endedBy,
             reason: options.reason,
+            status,
         };
 
         io.to(getUserRoom(userId)).emit(CALL_END_EVENT, payload);

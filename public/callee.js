@@ -4,57 +4,127 @@ const ICE_SERVERS = [
     { urls: "turn:192.168.1.47:3478?transport=tcp", username: "test", credential: "testpass" },
 ];
 
-const socket = io("http://localhost:3000", {
+const socket = io({
     auth: {
-        token: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJfaWQiOiIwODY0YjE0NC02MmZmLTRiMDItOThkMy1mNTQ0NjdkOWZlNDkiLCJyb2xlIjoiYWRtaW4iLCJzZXNzaW9uSWQiOiI5NWZiODExNi1hMjNiLTQ1MGMtOWZmMy00MGVjM2RlODRjNjIiLCJpYXQiOjE3NjEzMTQ3NzQsImV4cCI6MTc2MTM2ODc3NH0.KbzC_u2vwv-mc2jH2-lhSkuAbW4NIuXZ7ZvgZY-diEw"
+        token: "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJfaWQiOiIwODY0YjE0NC02MmZmLTRiMDItOThkMy1mNTQ0NjdkOWZlNDkiLCJyb2xlIjoiYWRtaW4iLCJzZXNzaW9uSWQiOiIzMDFiZTEwNi0zM2MwLTQ2YjItODg2YS01MjBmMDI1ZjdkMjYiLCJpYXQiOjE3NjE0MTI5NTksImV4cCI6MTc2MTQ2Njk1OX0.oS5fHgdAAFCBcHY4zN3whqI1T8A4kcUG9qtoC108kho"
     }
 }); // adjust backend URL if needed
-let pc, localStream;
+
+let pc;
+let localStream;
+let activeUserId;
+let pendingRemoteCandidates = [];
+
 const localVideo = document.getElementById("localVideo");
 const remoteVideo = document.getElementById("remoteVideo");
+const endBtn = document.getElementById("endCall");
 
 socket.on("connect", () => {
     console.log("Callee connected:", socket.id);
 });
 
-socket.on("call:offer", async data => {
-    console.log("Received offer");
-    pc = new RTCPeerConnection({ iceServers: ICE_SERVERS });
+function cleanupCall() {
+    if (pc) {
+        pc.close();
+        pc = null;
+    }
+    if (localStream) {
+        localStream.getTracks().forEach(track => track.stop());
+        localStream = null;
+    }
+    localVideo.srcObject = null;
+    remoteVideo.srcObject = null;
+    activeUserId = undefined;
+    pendingRemoteCandidates = [];
+}
 
-    localStream = await navigator.mediaDevices.getUserMedia({ audio: true, video: true });
-    localVideo.srcObject = localStream;
-    localStream.getTracks().forEach(track => pc.addTrack(track, localStream));
-
-    pc.ontrack = e => (remoteVideo.srcObject = e.streams[0]);
-
-    pc.onicecandidate = e => {
-        if (e.candidate) {
-            socket.emit("call:ice-candidate", { candidate: e.candidate });
-        }
-    };
-
-    await pc.setRemoteDescription(new RTCSessionDescription(data.offer));
-    const answer = await pc.createAnswer();
-    await pc.setLocalDescription(answer);
-
-    socket.emit("call:answer", { answer });
-});
-
-document.getElementById("endCall").onclick = () => {
-    socket.emit("call:end");
-    if (pc) pc.close();
-    console.log("Call ended");
-};
-
-socket.on("call:ice-candidate", async data => {
+async function addOrQueueCandidate(candidate) {
+    if (!pc || !candidate) return;
+    if (!pc.remoteDescription) {
+        pendingRemoteCandidates.push(candidate);
+        return;
+    }
     try {
-        await pc.addIceCandidate(new RTCIceCandidate(data.candidate));
-    } catch (err) {
-        console.error("Error adding candidate:", err);
+        await pc.addIceCandidate(new RTCIceCandidate(candidate));
+    } catch (error) {
+        console.error("Error adding remote candidate", error);
+    }
+}
+
+async function drainPendingCandidates() {
+    if (!pc) return;
+    for (const c of pendingRemoteCandidates) {
+        try {
+            await pc.addIceCandidate(new RTCIceCandidate(c));
+        } catch (error) {
+            console.error("Error adding queued candidate", error);
+        }
+    }
+    pendingRemoteCandidates = [];
+}
+
+socket.on("call:offer", async ({ offer, userId }) => {
+    console.log("Received offer from user:", userId);
+
+    if (pc) {
+        cleanupCall();
+    }
+
+    activeUserId = userId;
+
+    try {
+        pc = new RTCPeerConnection({ iceServers: ICE_SERVERS });
+
+        localStream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
+        localVideo.srcObject = localStream;
+        localStream.getTracks().forEach(track => pc.addTrack(track, localStream));
+
+        pc.ontrack = event => {
+            if (event.streams && event.streams[0]) {
+                remoteVideo.srcObject = event.streams[0];
+            }
+        };
+
+        pc.onicecandidate = event => {
+            if (event.candidate && activeUserId) {
+                socket.emit("call:ice-candidate", { candidate: event.candidate, target: activeUserId });
+            }
+        };
+
+        await pc.setRemoteDescription(new RTCSessionDescription(offer));
+        await drainPendingCandidates();
+
+        const answer = await pc.createAnswer();
+        await pc.setLocalDescription(answer);
+
+        socket.emit("call:answer", { answer, target: activeUserId });
+    } catch (error) {
+        console.error("Failed to handle incoming offer", error);
+        cleanupCall();
     }
 });
 
-socket.on("call:end", () => {
-    console.log("Call ended by peer");
-    if (pc) pc.close();
+endBtn.onclick = () => {
+    if (activeUserId) {
+        socket.emit("call:end", { target: activeUserId, status: "ended" });
+    }
+    cleanupCall();
+};
+
+socket.on("call:ice-candidate", async ({ candidate, userId }) => {
+    if (!pc || (activeUserId && userId && userId !== activeUserId)) {
+        return;
+    }
+    await addOrQueueCandidate(candidate);
 });
+
+socket.on("call:end", ({ userId, reason }) => {
+    if (!activeUserId || (userId && userId !== activeUserId)) {
+        return;
+    }
+
+    console.log("Call ended by peer", reason ? `(${reason})` : "");
+    cleanupCall();
+});
+
+socket.on("disconnect", cleanupCall);

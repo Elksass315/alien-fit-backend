@@ -32,7 +32,8 @@ const envSchema = z.object({
     CLOUDFLARE_PUBLIC_DOMAIN: z.string().min(1, 'CLOUDFLARE_PUBLIC_DOMAIN must not be empty'),
     CLOUDFLARE_SECRET_ACCESS_KEY: z.string().min(1, 'CLOUDFLARE_SECRET_ACCESS_KEY must not be empty'),
     CLOUDFLARE_ACCOUNT_ID: z.string().min(1, 'CLOUDFLARE_ACCOUNT_ID must not be empty'),
-    CLOUDFLARE_ACCESS_KEY_ID: z.string().min(1, 'CLOUDFLARE_ACCESS_KEY_ID must not be empty')
+    CLOUDFLARE_ACCESS_KEY_ID: z.string().min(1, 'CLOUDFLARE_ACCESS_KEY_ID must not be empty'),
+    HTTPS: z.boolean().default(false),
 });
 
 const parsedEnv = envSchema.safeParse(process.env);

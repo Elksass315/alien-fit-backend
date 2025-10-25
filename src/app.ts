@@ -26,7 +26,14 @@ export function initializeApp(app: express.Application) {
     app.use(corsConfig);
     app.use(express.json());
     app.use(express.urlencoded({ extended: true }));
-    app.use(helmet());
+    app.use(helmet({
+        // Disable HSTS in dev to avoid forced HTTPS when you switch back to HTTP
+        hsts: false,
+        // Either always set OAC, or set to false. Pick one and keep it consistent.
+        originAgentCluster: true,
+        // Optional: keep COOP; it’ll only apply on HTTPS/localhost
+        crossOriginOpenerPolicy: { policy: 'same-origin' },
+    }));
 
     // app.use(sanitize()); // TODO: FIX IT____IT THROW ERROR WHEN IT SANITIZE REQUEST
 
