@@ -144,3 +144,4 @@ vite.config.ts.timestamp-*
 public/uploads
 
 admin-sdk.json
+.cert
