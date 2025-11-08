@@ -34,6 +34,8 @@ const envSchema = z.object({
     CLOUDFLARE_ACCOUNT_ID: z.string().min(1, 'CLOUDFLARE_ACCOUNT_ID must not be empty'),
     CLOUDFLARE_ACCESS_KEY_ID: z.string().min(1, 'CLOUDFLARE_ACCESS_KEY_ID must not be empty'),
     HTTPS: z.boolean().default(false),
+    NUTRITIONIX_APP_ID: z.string().min(1, 'NUTRITIONIX_APP_ID must not be empty'),
+    NUTRITIONIX_APP_KEY: z.string().min(1, 'NUTRITIONIX_APP_KEY must not be empty'),
 });
 
 const parsedEnv = envSchema.safeParse(process.env);

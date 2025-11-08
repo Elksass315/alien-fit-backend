@@ -15,6 +15,7 @@ import { mediaRouterV1 } from './modules/media/v1/media.routes.js';
 import { postRouterV1 } from './modules/post/v1/post.routes.js';
 import { userProfileRouterV1 } from './modules/user-profile/v1/user-profile.routes.js';
 import { chatRouterV1 } from './modules/chat/v1/chat.routes.js';
+import { nutritionixRouterV1 } from './modules/nutritionix/v1/nutritionix.routes.js';
 
 import { errorMiddleware } from './middleware/error.middleware.js';
 import { notFoundMiddleware } from './middleware/not-found.middleware.js';
@@ -49,6 +50,7 @@ export function initializeApp(app: express.Application) {
     app.use('/api/v1/posts', postRouterV1);
     app.use('/api/v1/user-profile', userProfileRouterV1);
     app.use('/api/v1/chat', chatRouterV1);
+    app.use('/api/v1/nutritionix', nutritionixRouterV1);
 
     app.use(notFoundMiddleware);
     app.use(errorMiddleware);
