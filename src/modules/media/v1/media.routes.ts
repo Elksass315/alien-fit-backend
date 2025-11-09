@@ -9,7 +9,7 @@ import uploadMiddleware from '../../../middleware/upload.middleware.js';
 export const mediaRouterV1 = express.Router();
 
 mediaRouterV1.post('/upload',
-    uploadMiddleware.single('media'),
+    uploadMiddleware.array('media'),
     uploadMedia
 );
 

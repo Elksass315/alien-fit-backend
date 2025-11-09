@@ -3,12 +3,19 @@ import { MediaService } from './media-processing.service.js';
 import { HttpResponseError } from '../../../utils/appError.js';
 
 export const uploadMedia = async (req, res) => {
-    if (!req.file) {
+    const files = Array.isArray(req.files)
+        ? req.files
+        : req.file
+            ? [req.file]
+            : [];
+
+    if (!files.length) {
         throw new HttpResponseError(StatusCodes.BAD_REQUEST, 'No file uploaded');
     }
 
-    const media = await MediaService.processAndUpload(req.file);
-    res.status(StatusCodes.CREATED).json(media);
+    const media = await MediaService.processAndUploadMany(files);
+    const responsePayload = media.length === 1 ? media[0] : media;
+    res.status(StatusCodes.CREATED).json(responsePayload);
 };
 
 export const getMedia = async (req, res) => {

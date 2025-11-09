@@ -20,7 +20,7 @@ export class AuthService {
         if (user.isBlocked) {
             throw new HttpResponseError(StatusCodes.FORBIDDEN, 'Account is blocked');
         }
-        console.log("*****************************", user);
+
         const isValidPassword = await comparePasswords(password, user.password);
         if (!isValidPassword) {
             throw new HttpResponseError(StatusCodes.UNAUTHORIZED, 'Invalid credentials');

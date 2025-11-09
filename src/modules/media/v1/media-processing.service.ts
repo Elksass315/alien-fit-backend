@@ -3,6 +3,7 @@ import { HttpResponseError } from '../../../utils/appError.js';
 import { StatusCodes } from 'http-status-codes';
 import { StorageFactory } from '../../../storage/storage-factory.js';
 import sharp from 'sharp';
+import type { Express } from 'express';
 
 
 const MediaTypes = {
@@ -20,7 +21,7 @@ const SUPPORTED_MIME_TYPES = {
 export class MediaService {
     static storageService = StorageFactory.getStorage();
 
-    static async processAndUpload(file) {
+    static async processAndUpload(file: Express.Multer.File) {
         const mediaType = this.getMediaType(file.mimetype);
 
         if (!mediaType) {
@@ -54,6 +55,10 @@ export class MediaService {
 
         await media.save();
         return media;
+    }
+
+    static async processAndUploadMany(files: Express.Multer.File[]) {
+        return Promise.all(files.map((file) => this.processAndUpload(file)));
     }
 
     static async generateThumbnails(file, baseKey) {

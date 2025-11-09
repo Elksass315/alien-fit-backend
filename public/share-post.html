@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Alien Fit - Post Preview</title>
+    <link rel="stylesheet" href="./share-post.css">
+</head>
+
+<body>
+    <div class="page" id="app">
+        <header class="hero">
+            <div class="hero__brand">
+                <img src="./assets/app-icon.svg" alt="Alien Fit app icon" class="hero__icon">
+                <div class="hero__brand-copy">
+                    <h1>Alien Fit</h1>
+                    <p>Train beyond limits.</p>
+                </div>
+            </div>
+        </header>
+
+        <main id="post-view" class="post-card post-card--loading">
+            <div class="post-card__loading">Loading post...</div>
+        </main>
+
+        <section class="download-banner">
+            <div class="download-banner__blur"></div>
+            <h2>Experience More In The App</h2>
+            <p>Join the community to react, comment, and follow your favourite athletes.</p>
+            <div class="download-links" id="bottom-download-links"></div>
+        </section>
+    </div>
+
+    <template id="download-link-template">
+        <a class="download-link" target="_blank" rel="noopener">
+            <span class="download-link__icon"></span>
+            <span class="download-link__label"></span>
+        </a>
+    </template>
+
+    <script type="module" src="./share-post.js"></script>
+</body>
+
+</html>

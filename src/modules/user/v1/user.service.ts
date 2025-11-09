@@ -35,13 +35,8 @@ export class UserService {
             throw new HttpResponseError(StatusCodes.UNPROCESSABLE_ENTITY, 'Password must be at least 8 characters long and include uppercase, lowercase, number, and special character');
         }
 
-        // Validate imageId if provided
-        if (userData.imageId !== undefined && userData.imageId !== null) {
-            const media = await MediaEntity.findByPk(userData.imageId);
-            if (!media) {
-                throw new HttpResponseError(StatusCodes.BAD_REQUEST, 'Image not found');
-            }
-        }
+        await validateMediaIdIfProvided(userData.imageId, 'Image not found');
+        await validateMediaIdIfProvided(userData.profileBackgroundImageId, 'Profile background image not found');
 
         const user = new UserEntity(userData);
         await user.save();
@@ -49,11 +44,15 @@ export class UserService {
     }
 
     static async getUserById(userId: string | number, scope = 'default'): Promise<UserEntity> {
-        let user: UserEntity
+        const include = [
+            { model: MediaEntity, as: 'image' },
+            { model: MediaEntity, as: 'profileBackgroundImage' },
+        ];
+        let user: UserEntity;
         if (scope !== 'default') {
-            user = await UserEntity.scope(scope).findByPk(userId);
+            user = await UserEntity.scope(scope).findByPk(userId, { include });
         } else {
-            user = await UserEntity.findByPk(userId)
+            user = await UserEntity.findByPk(userId, { include });
         }
         if (!user) {
             throw new HttpResponseError(StatusCodes.NOT_FOUND, 'User not found');
@@ -67,13 +66,8 @@ export class UserService {
             throw new HttpResponseError(StatusCodes.NOT_FOUND, 'User not found');
         }
 
-        // Validate imageId if provided
-        if (updateData.imageId !== undefined && updateData.imageId !== null) {
-            const media = await MediaEntity.findByPk(updateData.imageId);
-            if (!media) {
-                throw new HttpResponseError(StatusCodes.BAD_REQUEST, 'Image not found');
-            }
-        }
+        await validateMediaIdIfProvided(updateData.imageId, 'Image not found');
+        await validateMediaIdIfProvided(updateData.profileBackgroundImageId, 'Profile background image not found');
 
         await user.update(updateData);
         return this.getUserById(user.id.toString());
@@ -129,5 +123,15 @@ export class UserService {
             total,
             totalPages: Math.ceil(total / Number(limit))
         };
+    }
+}
+
+async function validateMediaIdIfProvided(mediaId: string | null | undefined, errorMessage: string) {
+    if (mediaId === undefined || mediaId === null) {
+        return;
+    }
+    const media = await MediaEntity.findByPk(mediaId);
+    if (!media) {
+        throw new HttpResponseError(StatusCodes.BAD_REQUEST, errorMessage);
     }
 }

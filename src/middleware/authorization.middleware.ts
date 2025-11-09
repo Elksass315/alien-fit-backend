@@ -28,6 +28,23 @@ export const auth = (req: Request, res: Response, next: NextFunction): void => {
     })();
 };
 
+export const optionalAuth = (req: Request, res: Response, next: NextFunction): void => {
+    (async () => {
+        try {
+            const token = extractAccessToken(req);
+            if (!token) {
+                return next();
+            }
+            const { user, session } = await authenticateAccessToken(token);
+            req.user = user;
+            req.userSession = session;
+            next();
+        } catch (error) {
+            next(error);
+        }
+    })();
+};
+
 export const authorizeRoles = (...allowedRoles: string[]) => {
     return (req: Request, res: Response, next: NextFunction) => {
         if (!req.user || !allowedRoles.includes(req.user.role as string)) {

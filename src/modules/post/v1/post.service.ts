@@ -3,7 +3,7 @@ import { StatusCodes } from 'http-status-codes';
 import { sequelize } from '../../../database/db-config.js';
 import { HttpResponseError } from '../../../utils/appError.js';
 import { Roles } from '../../../constants/roles.js';
-import { UserEntity } from '../../user/v1/entity/user.entity.js';
+import { UserEntity, UserFollowEntity } from '../../user/v1/entity/user.entity.js';
 import { MediaEntity } from '../../media/v1/model/media.model.js';
 import { PostEntity } from './entity/post.entity.js';
 import { PostMediaEntity } from './entity/post-media.entity.js';
@@ -54,6 +54,10 @@ const POST_BASE_INCLUDE: any[] = [
                 model: MediaEntity,
                 as: 'image',
             },
+            {
+                model: MediaEntity,
+                as: 'profileBackgroundImage',
+            },
         ],
     },
     {
@@ -70,6 +74,10 @@ const COMMENT_AUTHOR_INCLUDE = {
         {
             model: MediaEntity,
             as: 'image',
+        },
+        {
+            model: MediaEntity,
+            as: 'profileBackgroundImage',
         },
     ],
 };
@@ -103,7 +111,7 @@ export class PostService {
             }
 
             await transaction.commit();
-            return this.getPostWithMeta(post.id, currentUser.id);
+            return this.getPostWithMeta(post.id, currentUser);
         } catch (error) {
             await transaction.rollback();
             throw error;
@@ -116,7 +124,7 @@ export class PostService {
 
     static async getPostsByUser(
         userId: string,
-        currentUser: UserEntity,
+        viewer: UserEntity | null,
         options: PaginationOptions = {},
         cachedUser?: UserEntity
     ) {
@@ -132,13 +140,21 @@ export class PostService {
         });
 
         const postIds = rows.map((post) => post.id);
-        const likedIds = await getLikedPostIds(currentUser.id, postIds);
-        const savedIds = await getSavedPostIds(currentUser.id, postIds);
+        const viewerId = viewer?.id ?? null;
+        const likedIds = viewerId ? await getLikedPostIds(viewerId, postIds) : new Set<string>();
+        const savedIds = viewerId ? await getSavedPostIds(viewerId, postIds) : new Set<string>();
+        const authorIds = [...new Set(rows.map((post) => post.userId))];
+        const followingIds = viewerId
+            ? await getFollowingIdsAmong(viewerId, authorIds.length ? authorIds : [userId])
+            : new Set<string>();
 
-        const items = rows.map((post) => formatPost(post, currentUser.id, likedIds, savedIds));
+        const items = rows.map((post) => formatPost(post, viewerId, likedIds, savedIds, followingIds));
+
+        const userPlain = user.get({ plain: true }) as any;
+        userPlain.isFollowing = viewerId ? followingIds.has(userId) : false;
 
         return {
-            user: user.get({ plain: true }),
+            user: userPlain,
             posts: buildPaginatedResponse(items, count, page, limit),
         };
     }
@@ -150,34 +166,91 @@ export class PostService {
             attributes: ['postId'],
         });
         const seenPostIds = new Set<string>(seenEntries.map((entry) => entry.postId));
+        const followingIdsList = await getAllFollowingIds(currentUser.id);
+        const posts: PostEntity[] = [];
+        const collectedPostIds = new Set<string>();
 
-        const unseenPosts = await PostEntity.findAll({
-            where: seenPostIds.size
-                ? { id: { [Op.notIn]: Array.from(seenPostIds) } }
-                : {},
-            include: POST_BASE_INCLUDE,
-            order: sequelize.random(),
-            limit,
-        });
+        if (followingIdsList.length) {
+            const unseenFollowWhere: any = {
+                userId: { [Op.in]: followingIdsList },
+            };
+            if (seenPostIds.size) {
+                unseenFollowWhere.id = { [Op.notIn]: Array.from(seenPostIds) };
+            }
 
-        const posts: PostEntity[] = [...unseenPosts];
-        if (posts.length < limit && seenPostIds.size) {
+            const unseenFollowed = await PostEntity.findAll({
+                where: unseenFollowWhere,
+                include: POST_BASE_INCLUDE,
+                order: sequelize.random(),
+                limit,
+            });
+
+            for (const post of unseenFollowed) {
+                if (!collectedPostIds.has(post.id) && posts.length < limit) {
+                    posts.push(post);
+                    collectedPostIds.add(post.id);
+                }
+            }
+        }
+
+        if (posts.length < limit) {
             const remaining = limit - posts.length;
-            const seenPosts = await PostEntity.findAll({
-                where: { id: { [Op.in]: Array.from(seenPostIds) } },
+            const excludeIds = new Set<string>([...seenPostIds, ...collectedPostIds]);
+
+            const conditions: any[] = [];
+            if (excludeIds.size) {
+                conditions.push({ id: { [Op.notIn]: Array.from(excludeIds) } });
+            }
+            if (followingIdsList.length) {
+                conditions.push({ userId: { [Op.notIn]: followingIdsList } });
+            }
+
+            const unseenOthers = await PostEntity.findAll({
+                where: conditions.length ? { [Op.and]: conditions } : {},
                 include: POST_BASE_INCLUDE,
                 order: sequelize.random(),
                 limit: remaining,
             });
-            posts.push(...seenPosts);
+
+            for (const post of unseenOthers) {
+                if (!collectedPostIds.has(post.id) && posts.length < limit) {
+                    posts.push(post);
+                    collectedPostIds.add(post.id);
+                }
+            }
+        }
+
+        if (posts.length < limit && seenPostIds.size) {
+            const remaining = limit - posts.length;
+            const seenPoolIds = Array.from(seenPostIds).filter((id) => !collectedPostIds.has(id));
+
+            if (seenPoolIds.length) {
+                const seenPosts = await PostEntity.findAll({
+                    where: { id: { [Op.in]: seenPoolIds } },
+                    include: POST_BASE_INCLUDE,
+                    order: sequelize.random(),
+                    limit: remaining,
+                });
+
+                for (const post of seenPosts) {
+                    if (!collectedPostIds.has(post.id) && posts.length < limit) {
+                        posts.push(post);
+                        collectedPostIds.add(post.id);
+                    }
+                }
+            }
         }
 
         const postIds = posts.map((post) => post.id);
         const likedIds = await getLikedPostIds(currentUser.id, postIds);
         const savedIds = await getSavedPostIds(currentUser.id, postIds);
-        const items = posts.map((post) => formatPost(post, currentUser.id, likedIds, savedIds));
+        const authorIds = posts.map((post) => post.userId);
+        const followingIds = await getFollowingIdsAmong(currentUser.id, authorIds);
+        const items = posts.map((post) => formatPost(post, currentUser.id, likedIds, savedIds, followingIds));
 
-        await markPostsAsViewed(currentUser.id, postIds);
+        if (postIds.length) {
+            await markPostsAsViewed(currentUser.id, postIds);
+        }
 
         const total = await PostEntity.count();
         return buildPaginatedResponse(items, total, page, limit);
@@ -217,7 +290,7 @@ export class PostService {
             }
 
             await transaction.commit();
-            return this.getPostWithMeta(post.id, currentUser.id);
+            return this.getPostWithMeta(post.id, currentUser);
         } catch (error) {
             await transaction.rollback();
             throw error;
@@ -291,7 +364,7 @@ export class PostService {
             }
 
             await transaction.commit();
-            const post = await this.getPostWithMeta(postId, currentUser.id);
+            const post = await this.getPostWithMeta(postId, currentUser);
             return { state: isLiked, post };
         } catch (error) {
             await transaction.rollback();
@@ -313,6 +386,10 @@ export class PostService {
                         {
                             model: MediaEntity,
                             as: 'image',
+                        },
+                        {
+                            model: MediaEntity,
+                            as: 'profileBackgroundImage',
                         },
                     ],
                 },
@@ -345,7 +422,7 @@ export class PostService {
             }
 
             await transaction.commit();
-            const post = await this.getPostWithMeta(postId, currentUser.id);
+            const post = await this.getPostWithMeta(postId, currentUser);
             return { state: isSaved, post };
         } catch (error) {
             await transaction.rollback();
@@ -374,12 +451,18 @@ export class PostService {
         const postIds = posts.map((post) => post.id);
         const likedIds = await getLikedPostIds(currentUser.id, postIds);
         const savedIds = new Set(postIds);
+        const authorIds = posts.map((post) => post.userId);
+        const followingIds = await getFollowingIdsAmong(currentUser.id, authorIds);
 
-        const items = posts.map((post) => formatPost(post, currentUser.id, likedIds, savedIds));
+        const items = posts.map((post) => formatPost(post, currentUser.id, likedIds, savedIds, followingIds));
         return buildPaginatedResponse(items, count, page, limit);
     }
 
-    private static async getPostWithMeta(postId: string, viewerId: string) {
+    static async getPost(postId: string, viewer: UserEntity | null) {
+        return this.getPostWithMeta(postId, viewer);
+    }
+
+    private static async getPostWithMeta(postId: string, viewer: UserEntity | null) {
         const post = await PostEntity.findByPk(postId, {
             include: POST_BASE_INCLUDE,
         });
@@ -387,9 +470,16 @@ export class PostService {
             throw new HttpResponseError(StatusCodes.NOT_FOUND, 'Post not found');
         }
 
-        const likedIds = await getLikedPostIds(viewerId, [postId]);
-        const savedIds = await getSavedPostIds(viewerId, [postId]);
-        return formatPost(post, viewerId, likedIds, savedIds);
+        const viewerId = viewer?.id ?? null;
+        const likedIds = viewerId ? await getLikedPostIds(viewerId, [postId]) : new Set<string>();
+        const savedIds = viewerId ? await getSavedPostIds(viewerId, [postId]) : new Set<string>();
+        const followingIds = viewerId ? await getFollowingIdsAmong(viewerId, [post.userId]) : new Set<string>();
+
+        if (viewerId) {
+            await markPostsAsViewed(viewerId, [post.id]);
+        }
+
+        return formatPost(post, viewerId, likedIds, savedIds, followingIds);
     }
 }
 
@@ -693,6 +783,10 @@ async function getUserProfileById(userId: string) {
                 model: MediaEntity,
                 as: 'image',
             },
+            {
+                model: MediaEntity,
+                as: 'profileBackgroundImage',
+            },
         ],
     });
     if (!user) {
@@ -771,7 +865,37 @@ async function markPostsAsViewed(userId: string, postIds: string[]) {
     );
 }
 
-function formatPost(post: PostEntity, currentUserId: string, likedIds: Set<string>, savedIds: Set<string>) {
+async function getAllFollowingIds(userId: string) {
+    const links = await UserFollowEntity.findAll({
+        where: { followerId: userId },
+        attributes: ['followingId'],
+    });
+    return links.map((link) => link.followingId);
+}
+
+async function getFollowingIdsAmong(userId: string, candidateIds: string[]) {
+    if (!userId || !candidateIds.length) {
+        return new Set<string>();
+    }
+
+    const uniqueIds = [...new Set(candidateIds)];
+    const links = await UserFollowEntity.findAll({
+        where: {
+            followerId: userId,
+            followingId: { [Op.in]: uniqueIds },
+        },
+        attributes: ['followingId'],
+    });
+    return new Set(links.map((link) => link.followingId));
+}
+
+function formatPost(
+    post: PostEntity,
+    currentUserId: string | null,
+    likedIds: Set<string>,
+    savedIds: Set<string>,
+    followingIds: Set<string> = new Set<string>()
+) {
     const plain = post.get({ plain: true }) as any;
 
     if (Array.isArray(plain.media)) {
@@ -784,9 +908,15 @@ function formatPost(post: PostEntity, currentUserId: string, likedIds: Set<strin
             .sort((a, b) => (a.sortOrder ?? 0) - (b.sortOrder ?? 0));
     }
 
-    plain.isMine = plain.userId === currentUserId;
-    plain.isLiked = likedIds.has(plain.id);
-    plain.isSaved = savedIds.has(plain.id);
+    const viewerId = currentUserId ?? null;
+    plain.isMine = viewerId ? plain.userId === viewerId : false;
+    plain.isLiked = viewerId ? likedIds.has(plain.id) : false;
+    plain.isSaved = viewerId ? savedIds.has(plain.id) : false;
+    plain.isFollowing = viewerId ? followingIds.has(plain.userId) : false;
+
+    if (plain.author) {
+        plain.author.isFollowing = viewerId ? followingIds.has(plain.author.id) : false;
+    }
     return plain;
 }
 

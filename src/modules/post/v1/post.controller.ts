@@ -27,7 +27,7 @@ export async function getUserPostsController(req: Request, res: Response) {
     const { page, limit } = req.query;
     const { userId } = req.params;
 
-    const data = await PostService.getPostsByUser(userId, req.user!, {
+    const data = await PostService.getPostsByUser(userId, req.user ?? null, {
         page: Number(page),
         limit: Number(limit),
     });
@@ -35,6 +35,16 @@ export async function getUserPostsController(req: Request, res: Response) {
     res.status(StatusCodes.OK).json({
         status: 'success',
         data,
+    });
+}
+
+export async function getPostController(req: Request, res: Response) {
+    const { postId } = req.params;
+    const post = await PostService.getPost(postId, req.user ?? null);
+
+    res.status(StatusCodes.OK).json({
+        status: 'success',
+        data: { post },
     });
 }
 

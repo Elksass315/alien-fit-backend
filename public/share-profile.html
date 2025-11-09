@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Alien Fit - Profile Preview</title>
+    <link rel="stylesheet" href="./share-post.css">
+    <link rel="stylesheet" href="./share-profile.css">
+</head>
+
+<body>
+    <div class="page profile-page" id="profile-app">
+        <header class="profile-hero">
+            <div class="profile-hero__cover" id="profile-cover">
+                <div class="profile-hero__cover-gradient"></div>
+            </div>
+            <div class="profile-hero__content">
+                <div class="profile-hero__brand">
+                    <img src="./assets/app-icon.svg" alt="Alien Fit app icon" class="profile-hero__brand-icon">
+                    <span class="profile-hero__brand-title">Alien Fit</span>
+                </div>
+                <div class="profile-hero__header">
+                    <div class="profile-hero__avatar" id="profile-avatar"></div>
+                    <div class="profile-hero__info">
+                        <h1 id="profile-name">Loading...</h1>
+                        <p id="profile-meta">Preparing profile...</p>
+                    </div>
+                </div>
+                <div class="profile-hero__actions">
+                    <a class="profile-button profile-button--primary" href="#" id="profile-follow">Follow in App</a>
+                    <a class="profile-button" href="#" id="profile-chat">Chat in App</a>
+                </div>
+            </div>
+        </header>
+
+        <section class="profile-section">
+            <h2>Recent Posts</h2>
+            <div id="profile-posts" class="profile-posts">
+                <div class="profile-posts__loading">Loading posts...</div>
+            </div>
+        </section>
+
+        <section class="download-banner download-banner--profile">
+            <div class="download-banner__blur"></div>
+            <h2>Unlock The Full Experience</h2>
+            <p>Install the Alien Fit app to follow, chat, and get real time coaching from elite trainers.</p>
+            <div class="download-links" id="profile-download-links"></div>
+        </section>
+    </div>
+
+    <template id="download-link-template">
+        <a class="download-link" target="_blank" rel="noopener">
+            <span class="download-link__icon"></span>
+            <span class="download-link__label"></span>
+        </a>
+    </template>
+
+    <script type="module" src="./share-profile.js"></script>
+</body>
+
+</html>

@@ -66,6 +66,10 @@ export const userValidationSchema = Joi.object({
     imageId: Joi.string().uuid().allow(null).optional().messages({
         'string.base': 'Image ID must be a string',
         'string.guid': 'Image ID must be a valid UUID'
+    }),
+    profileBackgroundImageId: Joi.string().uuid().allow(null).optional().messages({
+        'string.base': 'Profile background image ID must be a string',
+        'string.guid': 'Profile background image ID must be a valid UUID'
     })
 });
 

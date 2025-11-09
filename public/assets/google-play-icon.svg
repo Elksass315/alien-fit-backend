@@ -1,0 +1,7 @@
+<svg width="32" height="32" viewBox="0 0 32 32" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Google Play logo">
+  <g fill="none" stroke="none">
+    <path d="M4 4.6c0-.9.7-1.5 1.4-1.2l17.8 8.8c1.9.9 1.9 3.7 0 4.6L5.4 25.6C4.7 25.9 4 25.3 4 24.4V4.6z" fill="#00c37a"/>
+    <path d="M19.6 12.2 8.1 4.1l10.4 11.9-10.4 11.9 11.5-8.1c1.9-1.3 1.9-4.3 0-5.6z" fill="#00a1ff"/>
+    <path d="M22.5 13.6 25 12.1c1.7-1 2.7 1.6 1.3 2.7l-2.5 1.9c-.3.2-.7.2-1-.1l-1.1-1c-.4-.4-.3-1 .2-1.4l.6-.6z" fill="#ffce00"/>
+  </g>
+</svg>
