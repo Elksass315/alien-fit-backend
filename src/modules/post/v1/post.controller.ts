@@ -61,6 +61,27 @@ export async function getFeedController(req: Request, res: Response) {
     });
 }
 
+export async function searchPostsController(req: Request, res: Response) {
+    const { page, limit } = req.query;
+
+    const filters = {
+        userId: toOptionalString(req.query.userId),
+        text: toOptionalString(req.query.text),
+        createdAfter: parseDateFromQuery(req.query.createdAfter),
+        createdBefore: parseDateFromQuery(req.query.createdBefore),
+    };
+
+    const data = await PostService.searchPosts(req.user!, filters, {
+        page: Number(page),
+        limit: Number(limit),
+    });
+
+    res.status(StatusCodes.OK).json({
+        status: 'success',
+        data,
+    });
+}
+
 export async function updatePostController(req: Request, res: Response) {
     const { postId } = req.params;
     const post = await PostService.updatePost(postId, req.user!, req.body);
@@ -202,4 +223,23 @@ export async function reportCommentController(req: Request, res: Response) {
         status: 'success',
         data: { report },
     });
+}
+
+function toOptionalString(value: unknown): string | undefined {
+    if (typeof value === 'string') {
+        return value;
+    }
+    if (Array.isArray(value) && value.length > 0) {
+        return value[0];
+    }
+    return undefined;
+}
+
+function parseDateFromQuery(value: unknown): Date | undefined {
+    const stringValue = toOptionalString(value);
+    if (!stringValue) {
+        return undefined;
+    }
+    const parsed = new Date(stringValue);
+    return Number.isNaN(parsed.getTime()) ? undefined : parsed;
 }

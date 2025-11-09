@@ -30,6 +30,13 @@ export const getUserPostsSchema = paginationQuerySchema.keys({
 
 export const feedSchema = paginationQuerySchema;
 
+export const searchPostsSchema = paginationQuerySchema.keys({
+    userId: uuidSchema,
+    text: Joi.string().trim().min(1).max(5000),
+    createdAfter: Joi.date().iso(),
+    createdBefore: Joi.date().iso(),
+});
+
 export const reportPostSchema = Joi.object({
     postId: uuidSchema.required(),
     reason: Joi.string().min(1).max(1000).required(),

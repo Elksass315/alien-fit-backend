@@ -12,6 +12,7 @@ postRouterV1.get('/user/:userId', optionalAuth, validateRequest(validation.getUs
 postRouterV1.post('/', auth, validateRequest(validation.createPostSchema), controllers.createPostController);
 postRouterV1.get('/me', auth, validateRequest(validation.getMyPostsSchema), controllers.getMyPostsController);
 postRouterV1.get('/feed', auth, validateRequest(validation.feedSchema), controllers.getFeedController);
+postRouterV1.get('/search', auth, validateRequest(validation.searchPostsSchema), controllers.searchPostsController);
 
 postRouterV1.put('/:postId', auth, validateRequest(validation.updatePostSchema), controllers.updatePostController);
 postRouterV1.delete('/:postId', auth, validateRequest(validation.postIdParamSchema), controllers.deletePostController);
@@ -36,5 +37,3 @@ postRouterV1.post('/comments/:commentId/report', auth, validateRequest(validatio
 
 postRouterV1.get('/:postId', optionalAuth, validateRequest(validation.postIdParamSchema), controllers.getPostController);
 
-postRouterV1.use(authorizeRoles(Roles.ADMIN));
-// Admin endpoints for moderation can be added here

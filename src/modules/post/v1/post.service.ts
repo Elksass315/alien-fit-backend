@@ -41,6 +41,13 @@ interface ToggleResult<T> {
     post: any;
 }
 
+interface PostSearchFilters {
+    userId?: string;
+    text?: string;
+    createdAfter?: Date;
+    createdBefore?: Date;
+}
+
 const DEFAULT_PAGE = 1;
 const DEFAULT_LIMIT = 10;
 const MAX_LIMIT = 100;
@@ -455,6 +462,51 @@ export class PostService {
         const followingIds = await getFollowingIdsAmong(currentUser.id, authorIds);
 
         const items = posts.map((post) => formatPost(post, currentUser.id, likedIds, savedIds, followingIds));
+        return buildPaginatedResponse(items, count, page, limit);
+    }
+
+    static async searchPosts(viewer: UserEntity | null, filters: PostSearchFilters = {}, options: PaginationOptions = {}) {
+        const { page, limit, offset } = normalizePagination(options);
+
+        if (filters.createdAfter && filters.createdBefore && filters.createdAfter > filters.createdBefore) {
+            throw new HttpResponseError(StatusCodes.BAD_REQUEST, 'createdAfter must be before createdBefore');
+        }
+
+        const where: Record<string, any> = {};
+        if (filters.userId) {
+            where.userId = filters.userId;
+        }
+
+        if (filters.text) {
+            const sanitizedText = filters.text.trim();
+            if (sanitizedText) {
+                where.text = { [Op.iLike]: `%${sanitizedText}%` };
+            }
+        }
+
+        if (filters.createdAfter || filters.createdBefore) {
+            where.createdAt = {
+                ...(filters.createdAfter ? { [Op.gte]: filters.createdAfter } : {}),
+                ...(filters.createdBefore ? { [Op.lte]: filters.createdBefore } : {}),
+            };
+        }
+
+        const { rows, count } = await PostEntity.findAndCountAll({
+            where,
+            include: POST_BASE_INCLUDE,
+            order: [['createdAt', 'DESC']],
+            offset,
+            limit,
+        });
+
+        const postIds = rows.map((post) => post.id);
+        const viewerId = viewer?.id ?? null;
+        const likedIds = viewerId ? await getLikedPostIds(viewerId, postIds) : new Set<string>();
+        const savedIds = viewerId ? await getSavedPostIds(viewerId, postIds) : new Set<string>();
+        const authorIds = rows.map((post) => post.userId);
+        const followingIds = viewerId ? await getFollowingIdsAmong(viewerId, authorIds) : new Set<string>();
+
+        const items = rows.map((post) => formatPost(post, viewerId, likedIds, savedIds, followingIds));
         return buildPaginatedResponse(items, count, page, limit);
     }
 

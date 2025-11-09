@@ -49,5 +49,7 @@ export const updateMeSchema = userValidationSchema
         height: userValidationSchema.extract('height'),
         weight: userValidationSchema.extract('weight'),
         age: userValidationSchema.extract('age'),
+        imageId: userValidationSchema.extract('imageId').optional(),
+        profileBackgroundImageId: userValidationSchema.extract('profileBackgroundImageId').optional(),
         isProfileComplete: userValidationSchema.extract('isProfileComplete').optional(),
     });
