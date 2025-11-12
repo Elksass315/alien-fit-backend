@@ -106,7 +106,7 @@ export function initializeSocketServer(server: HTTPServer) {
 
         socket.on(SEND_MESSAGE_EVENT, async (payload, callback) => {
             try {
-                const { content, userId: targetUserId } = payload as { content?: string; userId?: string };
+                const { content, mediaIds, userId: targetUserId } = payload as { content?: string; mediaIds?: string[]; userId?: string };
                 const resolvedUserId = role === Roles.USER ? userId : targetUserId;
 
                 if (!resolvedUserId) {
@@ -119,6 +119,7 @@ export function initializeSocketServer(server: HTTPServer) {
                     senderId: userId,
                     senderRole,
                     content: content ?? '',
+                    mediaIds,
                 });
 
                 await PresenceService.heartbeat(userId);
@@ -499,8 +500,9 @@ function mapMessageForUser(viewerId: string, message: MessageEntity) {
     const isMine = message.senderId === viewerId;
     return {
         id: message.id,
-        content: message.content,
+        content: message.content ?? '',
         messageType: message.messageType,
+        media: formatMessageMedia(message),
         createdAt: message.createdAt,
         senderType,
         isMine,
@@ -514,9 +516,26 @@ function mapMessageForTrainer(message: MessageEntity) {
         senderId: message.senderId,
         senderRole: message.senderRole,
         messageType: message.messageType,
-        content: message.content,
+        content: message.content ?? '',
+        media: formatMessageMedia(message),
         createdAt: message.createdAt,
     };
+}
+
+function formatMessageMedia(message: MessageEntity) {
+    const media = message.get('media') as unknown;
+    if (!Array.isArray(media)) {
+        return [];
+    }
+
+    return media
+        .map((item) => {
+            const plain = typeof (item as any)?.get === 'function' ? (item as any).get({ plain: true }) : item;
+            const sortOrder = plain?.MessageMedia?.sortOrder ?? 0;
+            const { MessageMedia, ...rest } = plain ?? {};
+            return { ...rest, sortOrder };
+        })
+        .sort((a, b) => (a.sortOrder ?? 0) - (b.sortOrder ?? 0));
 }
 
 function registerConnection(userId: string) {

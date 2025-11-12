@@ -42,13 +42,14 @@ export async function getMyMessagesController(req: Request, res: Response): Prom
 
 export async function sendMessageAsUserController(req: Request, res: Response): Promise<void> {
     const userId = req.user!.id.toString();
-    const content = req.body.content as string;
+    const { content, mediaIds } = req.body;
 
     const { message } = await ChatService.sendMessage({
         userId,
         senderId: userId,
         senderRole: Roles.USER as SenderRole,
-        content,
+        content: content ?? '',
+        mediaIds,
     });
 
     res.status(StatusCodes.CREATED).json({
@@ -108,14 +109,15 @@ export async function sendMessageAsTrainerController(req: Request, res: Response
     }
 
     const userId = req.params.userId;
-    const content = req.body.content as string;
+    const { content, mediaIds } = req.body;
 
     const senderRole = sender.role as SenderRole;
     const { message } = await ChatService.sendMessage({
         userId,
         senderId: sender.id.toString(),
         senderRole,
-        content,
+        content: content ?? '',
+        mediaIds,
     });
 
     res.status(StatusCodes.CREATED).json({
@@ -149,8 +151,9 @@ function mapMessageForUserViewer(message: MessageEntity, viewerId: string) {
 
     return {
         id: message.id,
-        content: message.content,
+        content: message.content ?? '',
         messageType: message.messageType,
+        media: formatMessageMedia(message),
         createdAt: message.createdAt,
         senderType,
         isMine,
@@ -164,7 +167,8 @@ function mapMessageForTrainerViewer(message: MessageEntity) {
         senderId: message.senderId,
         senderRole: message.senderRole,
         messageType: message.messageType,
-        content: message.content,
+        content: message.content ?? '',
+        media: formatMessageMedia(message),
         createdAt: message.createdAt,
     };
 }
@@ -180,4 +184,20 @@ function mapChatUser(user: unknown) {
         name: typedUser.name,
         provider: typedUser.provider,
     };
+}
+
+function formatMessageMedia(message: MessageEntity) {
+    const media = message.get('media') as unknown;
+    if (!Array.isArray(media)) {
+        return [];
+    }
+
+    return media
+        .map((item) => {
+            const plain = typeof (item as any)?.get === 'function' ? (item as any).get({ plain: true }) : item;
+            const sortOrder = plain?.MessageMedia?.sortOrder ?? 0;
+            const { MessageMedia, ...rest } = plain ?? {};
+            return { ...rest, sortOrder };
+        })
+        .sort((a, b) => (a.sortOrder ?? 0) - (b.sortOrder ?? 0));
 }

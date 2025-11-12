@@ -14,6 +14,7 @@ import { PostSaveEntity } from './entity/post-save.entity.js';
 import { PostCommentEntity } from './entity/post-comment.entity.js';
 import { PostCommentLikeEntity } from './entity/post-comment-like.entity.js';
 import { PostCommentReportEntity } from './entity/post-comment-report.entity.js';
+import { PostCommentMediaEntity } from './entity/post-comment-media.entity.js';
 import './entity/associate-models.js';
 
 interface PaginationOptions {
@@ -88,6 +89,19 @@ const COMMENT_AUTHOR_INCLUDE = {
         },
     ],
 };
+
+const COMMENT_MEDIA_INCLUDE = {
+    model: MediaEntity,
+    as: 'media',
+    through: { attributes: ['sortOrder'] },
+};
+
+const COMMENT_INCLUDE = [COMMENT_AUTHOR_INCLUDE, COMMENT_MEDIA_INCLUDE];
+
+interface CommentPayload {
+    content?: string | null;
+    mediaIds?: string[] | null;
+}
 
 export class PostService {
     static async createPost(currentUser: UserEntity, payload: CreatePostPayload) {
@@ -536,21 +550,46 @@ export class PostService {
 }
 
 export class PostCommentService {
-    static async createComment(postId: string, currentUser: UserEntity, content: string) {
+    static async createComment(postId: string, currentUser: UserEntity, payload: CommentPayload = {}) {
         await ensurePostExists(postId);
+        const normalizedContent = normalizeCommentContent(payload.content);
+        const mediaIds = sanitizeMediaIds(payload.mediaIds);
+
+        if (!normalizedContent && !mediaIds.length) {
+            throw new HttpResponseError(StatusCodes.BAD_REQUEST, 'Comment must include text or media');
+        }
+
+        if (mediaIds.length) {
+            await assertAllMediaExist(mediaIds);
+        }
+
         const transaction = await sequelize.transaction();
         try {
             const comment = await PostCommentEntity.create({
                 postId,
                 userId: currentUser.id,
-                content: content.trim(),
+                content: normalizedContent,
             }, { transaction });
+
+            if (mediaIds.length) {
+                await PostCommentMediaEntity.bulkCreate(
+                    mediaIds.map((mediaId, index) => ({
+                        commentId: comment.id,
+                        mediaId,
+                        sortOrder: index,
+                    })),
+                    { transaction },
+                );
+            }
 
             await PostEntity.increment('commentsCount', { by: 1, where: { id: postId }, transaction });
             await transaction.commit();
 
-            await comment.reload({ include: [COMMENT_AUTHOR_INCLUDE] });
+            await comment.reload({ include: COMMENT_INCLUDE });
             comment.setDataValue('replies', []);
+            if (!comment.get('media')) {
+                comment.setDataValue('media', []);
+            }
             const likedIds = await getLikedCommentIds(currentUser.id, [comment.id]);
             return formatComment(comment, currentUser.id, likedIds);
         } catch (error) {
@@ -559,11 +598,22 @@ export class PostCommentService {
         }
     }
 
-    static async createReply(postId: string, commentId: string, currentUser: UserEntity, content: string) {
+    static async createReply(postId: string, commentId: string, currentUser: UserEntity, payload: CommentPayload = {}) {
         await ensurePostExists(postId);
         const parent = await PostCommentEntity.findOne({ where: { id: commentId, postId } });
         if (!parent) {
             throw new HttpResponseError(StatusCodes.NOT_FOUND, 'Parent comment not found');
+        }
+
+        const normalizedContent = normalizeCommentContent(payload.content);
+        const mediaIds = sanitizeMediaIds(payload.mediaIds);
+
+        if (!normalizedContent && !mediaIds.length) {
+            throw new HttpResponseError(StatusCodes.BAD_REQUEST, 'Reply must include text or media');
+        }
+
+        if (mediaIds.length) {
+            await assertAllMediaExist(mediaIds);
         }
 
         const transaction = await sequelize.transaction();
@@ -572,15 +622,27 @@ export class PostCommentService {
                 postId,
                 userId: currentUser.id,
                 parentId: commentId,
-                content: content.trim(),
+                content: normalizedContent,
             }, { transaction });
+
+            if (mediaIds.length) {
+                await PostCommentMediaEntity.bulkCreate(
+                    mediaIds.map((mediaId, index) => ({
+                        commentId: reply.id,
+                        mediaId,
+                        sortOrder: index,
+                    })),
+                    { transaction },
+                );
+            }
 
             await PostEntity.increment('commentsCount', { by: 1, where: { id: postId }, transaction });
             await PostCommentEntity.increment('repliesCount', { by: 1, where: { id: commentId }, transaction });
 
             await transaction.commit();
 
-            await reply.reload({ include: [COMMENT_AUTHOR_INCLUDE] });
+            await reply.reload({ include: COMMENT_INCLUDE });
+            reply.setDataValue('replies', []);
             const likedIds = await getLikedCommentIds(currentUser.id, [reply.id]);
             return formatPlainComment(reply.get({ plain: true }), currentUser.id, likedIds);
         } catch (error) {
@@ -600,7 +662,7 @@ export class PostCommentService {
             const [rows, count] = await Promise.all([
                 PostCommentEntity.findAll({
                     where: topLevelWhere,
-                    include: [COMMENT_AUTHOR_INCLUDE],
+                    include: COMMENT_INCLUDE,
                     order: [['createdAt', 'DESC']],
                     limit,
                     offset,
@@ -615,7 +677,7 @@ export class PostCommentService {
             if (topIds.length) {
                 const replies = await PostCommentEntity.findAll({
                     where: { parentId: { [Op.in]: topIds } },
-                    include: [COMMENT_AUTHOR_INCLUDE],
+                    include: COMMENT_INCLUDE,
                     order: [['createdAt', 'DESC']],
                 });
 
@@ -629,13 +691,21 @@ export class PostCommentService {
                 rows.forEach((comment) => {
                     const list = repliesByParent[comment.id] ?? [];
                     comment.setDataValue('replies', list);
+                    if (!comment.get('media')) {
+                        comment.setDataValue('media', []);
+                    }
                     if (list.length) {
                         allCommentIds.push(...list.map((r) => r.id));
                     }
                 });
             } else {
                 // Ensure replies is present as empty array for consistency
-                rows.forEach((comment) => comment.setDataValue('replies', []));
+                rows.forEach((comment) => {
+                    comment.setDataValue('replies', []);
+                    if (!comment.get('media')) {
+                        comment.setDataValue('media', []);
+                    }
+                });
             }
 
             // 3) Compute liked flags and format
@@ -649,7 +719,7 @@ export class PostCommentService {
         }
     }
 
-    static async updateComment(commentId: string, currentUser: UserEntity, content: string) {
+    static async updateComment(commentId: string, currentUser: UserEntity, payload: CommentPayload = {}) {
         const comment = await PostCommentEntity.findByPk(commentId, {
             include: [
                 {
@@ -658,6 +728,7 @@ export class PostCommentService {
                     attributes: ['id', 'userId'],
                 },
                 COMMENT_AUTHOR_INCLUDE,
+                COMMENT_MEDIA_INCLUDE,
             ],
         });
         if (!comment) {
@@ -668,9 +739,55 @@ export class PostCommentService {
             throw new HttpResponseError(StatusCodes.FORBIDDEN, 'You are not allowed to update this comment');
         }
 
-        await comment.update({ content: content.trim() });
-        const likedIds = await getLikedCommentIds(currentUser.id, [comment.id]);
+        const hasContentField = Object.prototype.hasOwnProperty.call(payload ?? {}, 'content');
+        const hasMediaField = Object.prototype.hasOwnProperty.call(payload ?? {}, 'mediaIds');
+
+        const nextContent = hasContentField ? normalizeCommentContent(payload.content) : (comment.content ?? '');
+        const providedMediaIds = hasMediaField ? sanitizeMediaIds(payload.mediaIds) : null;
+
+        if (providedMediaIds && providedMediaIds.length) {
+            await assertAllMediaExist(providedMediaIds);
+        }
+
+        const existingMedia = (comment.get('media') as MediaEntity[] | undefined) ?? [];
+        const resultingMediaCount = hasMediaField ? (providedMediaIds?.length ?? 0) : existingMedia.length;
+
+        if (!nextContent && resultingMediaCount === 0) {
+            throw new HttpResponseError(StatusCodes.BAD_REQUEST, 'Comment must include text or media');
+        }
+
+        const transaction = await sequelize.transaction();
+        try {
+            if (hasContentField) {
+                await comment.update({ content: nextContent }, { transaction });
+            }
+
+            if (hasMediaField) {
+                await PostCommentMediaEntity.destroy({ where: { commentId }, transaction });
+                if (providedMediaIds && providedMediaIds.length) {
+                    await PostCommentMediaEntity.bulkCreate(
+                        providedMediaIds.map((mediaId, index) => ({
+                            commentId,
+                            mediaId,
+                            sortOrder: index,
+                        })),
+                        { transaction },
+                    );
+                }
+            }
+
+            await transaction.commit();
+        } catch (error) {
+            await transaction.rollback();
+            throw error;
+        }
+
+        await comment.reload({ include: COMMENT_INCLUDE });
         comment.setDataValue('replies', []);
+        if (!comment.get('media')) {
+            comment.setDataValue('media', []);
+        }
+        const likedIds = await getLikedCommentIds(currentUser.id, [comment.id]);
         return formatComment(comment, currentUser.id, likedIds);
     }
 
@@ -770,11 +887,14 @@ export class PostCommentService {
             }
 
             await transaction.commit();
-            const comment = await PostCommentEntity.findByPk(commentId, { include: [COMMENT_AUTHOR_INCLUDE] });
+            const comment = await PostCommentEntity.findByPk(commentId, { include: COMMENT_INCLUDE });
             if (!comment) {
                 throw new HttpResponseError(StatusCodes.NOT_FOUND, 'Comment not found');
             }
             comment.setDataValue('replies', []);
+            if (!comment.get('media')) {
+                comment.setDataValue('media', []);
+            }
             const likedIds = await getLikedCommentIds(currentUser.id, [commentId]);
             return { state: isLiked, comment: formatComment(comment, currentUser.id, likedIds) };
         } catch (error) {
@@ -813,6 +933,13 @@ function normalizePagination(options: PaginationOptions = {}) {
 function buildPaginatedResponse<T>(items: T[], total: number, page: number, limit: number): PaginatedResponse<T> {
     const totalPages = total > 0 ? Math.ceil(total / limit) : 0;
     return { items, total, page, limit, totalPages };
+}
+
+function normalizeCommentContent(value?: string | null) {
+    if (typeof value === 'string') {
+        return value.trim();
+    }
+    return '';
 }
 
 async function assertAllMediaExist(mediaIds: string[]) {
@@ -997,6 +1124,22 @@ function formatPlainComment(comment: any, currentUserId: string, likedIds: Set<s
     const formatted = { ...comment };
     formatted.isMine = formatted.userId === currentUserId;
     formatted.isLiked = likedIds.has(formatted.id);
+
+    if (Array.isArray(formatted.media)) {
+        formatted.media = formatted.media
+            .map((media: any) => {
+                const sortOrder = media.PostCommentMedia?.sortOrder ?? 0;
+                const { PostCommentMedia, ...rest } = media;
+                return { ...rest, sortOrder };
+            })
+            .sort((a: any, b: any) => (a.sortOrder ?? 0) - (b.sortOrder ?? 0));
+    } else {
+        formatted.media = [];
+    }
+
+    if (formatted.mediaLinks) {
+        delete formatted.mediaLinks;
+    }
 
     if (Array.isArray(formatted.replies)) {
         formatted.replies = formatted.replies

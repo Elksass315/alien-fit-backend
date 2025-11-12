@@ -14,7 +14,7 @@ export class MessageEntity extends Model {
     declare senderId: string;
     declare senderRole: SenderRole;
     declare messageType: MessageType;
-    declare content: string;
+    declare content: string | null;
     declare readonly createdAt: Date;
     declare readonly updatedAt: Date;
 }
@@ -45,7 +45,8 @@ MessageEntity.init(
         },
         content: {
             type: DataTypes.TEXT,
-            allowNull: false,
+            allowNull: true,
+            defaultValue: '',
         },
     },
     {

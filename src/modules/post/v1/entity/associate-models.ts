@@ -9,6 +9,7 @@ import { PostSaveEntity } from './post-save.entity.js';
 import { PostCommentEntity } from './post-comment.entity.js';
 import { PostCommentLikeEntity } from './post-comment-like.entity.js';
 import { PostCommentReportEntity } from './post-comment-report.entity.js';
+import { PostCommentMediaEntity } from './post-comment-media.entity.js';
 
 UserEntity.hasMany(PostEntity, { foreignKey: 'userId', as: 'posts', onDelete: 'CASCADE', hooks: true });
 PostEntity.belongsTo(UserEntity, { foreignKey: 'userId', as: 'author' });
@@ -55,6 +56,21 @@ PostCommentEntity.belongsTo(UserEntity, { foreignKey: 'userId', as: 'author' });
 UserEntity.hasMany(PostCommentEntity, { foreignKey: 'userId', as: 'postComments', onDelete: 'CASCADE', hooks: true });
 PostCommentEntity.belongsTo(PostCommentEntity, { foreignKey: 'parentId', as: 'parent' });
 PostCommentEntity.hasMany(PostCommentEntity, { foreignKey: 'parentId', as: 'replies', onDelete: 'CASCADE', hooks: true });
+PostCommentEntity.belongsToMany(MediaEntity, {
+    through: PostCommentMediaEntity,
+    foreignKey: 'commentId',
+    otherKey: 'mediaId',
+    as: 'media',
+});
+MediaEntity.belongsToMany(PostCommentEntity, {
+    through: PostCommentMediaEntity,
+    foreignKey: 'mediaId',
+    otherKey: 'commentId',
+    as: 'comments',
+});
+PostCommentEntity.hasMany(PostCommentMediaEntity, { foreignKey: 'commentId', as: 'mediaLinks', onDelete: 'CASCADE', hooks: true });
+PostCommentMediaEntity.belongsTo(PostCommentEntity, { foreignKey: 'commentId', as: 'comment' });
+PostCommentMediaEntity.belongsTo(MediaEntity, { foreignKey: 'mediaId', as: 'media' });
 
 PostCommentEntity.hasMany(PostCommentLikeEntity, { foreignKey: 'commentId', as: 'likes', onDelete: 'CASCADE', hooks: true });
 PostCommentLikeEntity.belongsTo(PostCommentEntity, { foreignKey: 'commentId', as: 'comment' });

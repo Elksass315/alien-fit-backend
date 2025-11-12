@@ -36,6 +36,7 @@ PostCommentEntity.init(
         content: {
             type: DataTypes.TEXT,
             allowNull: false,
+            defaultValue: '',
         },
         likesCount: {
             type: DataTypes.INTEGER,

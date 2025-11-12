@@ -41,7 +41,7 @@ MediaEntity.init(
             allowNull: false,
         },
         mediaType: {
-            type: DataTypes.ENUM('image', 'video', 'document'),
+            type: DataTypes.ENUM('image', 'video', 'document', 'audio'),
             allowNull: false,
         },
         size: {

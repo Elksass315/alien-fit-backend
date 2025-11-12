@@ -58,13 +58,15 @@ export const getSavedPostsSchema = paginationQuerySchema;
 
 export const createCommentSchema = Joi.object({
     postId: uuidSchema.required(),
-    content: Joi.string().trim().min(1).max(2000).required(),
+    content: Joi.string().trim().allow('', null).max(2000).default(''),
+    mediaIds: Joi.array().items(uuidSchema).max(10),
 });
 
 export const createReplySchema = Joi.object({
     postId: uuidSchema.required(),
     commentId: uuidSchema.required(),
-    content: Joi.string().trim().min(1).max(2000).required(),
+    content: Joi.string().trim().allow('', null).max(2000).default(''),
+    mediaIds: Joi.array().items(uuidSchema).max(10),
 });
 
 export const listCommentsSchema = paginationQuerySchema.keys({
@@ -77,7 +79,8 @@ export const commentIdParamSchema = Joi.object({
 
 export const updateCommentSchema = Joi.object({
     commentId: uuidSchema.required(),
-    content: Joi.string().trim().min(1).max(2000).required(),
+    content: Joi.string().trim().allow('', null).max(2000),
+    mediaIds: Joi.array().items(uuidSchema).max(10),
 });
 
 export const reportCommentSchema = Joi.object({

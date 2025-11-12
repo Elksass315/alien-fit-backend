@@ -156,8 +156,8 @@ export async function getSavedPostsController(req: Request, res: Response) {
 
 export async function createCommentController(req: Request, res: Response) {
     const { postId } = req.params;
-    const { content } = req.body;
-    const comment = await PostCommentService.createComment(postId, req.user!, content);
+    const { content, mediaIds } = req.body;
+    const comment = await PostCommentService.createComment(postId, req.user!, { content, mediaIds });
     res.status(StatusCodes.CREATED).json({
         status: 'success',
         data: { comment },
@@ -166,8 +166,8 @@ export async function createCommentController(req: Request, res: Response) {
 
 export async function createCommentReplyController(req: Request, res: Response) {
     const { postId, commentId } = req.params;
-    const { content } = req.body;
-    const reply = await PostCommentService.createReply(postId, commentId, req.user!, content);
+    const { content, mediaIds } = req.body;
+    const reply = await PostCommentService.createReply(postId, commentId, req.user!, { content, mediaIds });
     res.status(StatusCodes.CREATED).json({
         status: 'success',
         data: { comment: reply },
@@ -190,8 +190,8 @@ export async function listCommentsController(req: Request, res: Response) {
 
 export async function updateCommentController(req: Request, res: Response) {
     const { commentId } = req.params;
-    const { content } = req.body;
-    const comment = await PostCommentService.updateComment(commentId, req.user!, content);
+    const { content, mediaIds } = req.body;
+    const comment = await PostCommentService.updateComment(commentId, req.user!, { content, mediaIds });
     res.status(StatusCodes.OK).json({
         status: 'success',
         data: { comment },

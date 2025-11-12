@@ -9,13 +9,15 @@ import type { Express } from 'express';
 const MediaTypes = {
     IMAGE: 'image',
     VIDEO: 'video',
-    DOCUMENT: 'document'
-};
+    DOCUMENT: 'document',
+    AUDIO: 'audio',
+} as const;
 
 const SUPPORTED_MIME_TYPES = {
-    [MediaTypes.IMAGE]: ['image/jpeg', 'image/png', 'image/webp'],
+    [MediaTypes.IMAGE]: ['image/jpeg', 'image/png', 'image/webp', 'image/heic', 'image/heif', 'image/heic-sequence', 'image/heif-sequence'],
     [MediaTypes.VIDEO]: ['video/mp4', 'video/quicktime'],
-    [MediaTypes.DOCUMENT]: ['application/pdf']
+    [MediaTypes.DOCUMENT]: ['application/pdf'],
+    [MediaTypes.AUDIO]: ['audio/mpeg', 'audio/mp3', 'audio/wav', 'audio/webm', 'audio/ogg', 'audio/mp4'],
 };
 
 export class MediaService {
@@ -38,7 +40,7 @@ export class MediaService {
         await this.storageService.uploadFile(processedFile.buffer, key, file.mimetype);
         const url = this.storageService.getPublicUrl(key);
 
-        let thumbnails = {};
+        let thumbnails = {} as Record<string, string>;
         if (mediaType === MediaTypes.VIDEO) {
             thumbnails = await this.generateThumbnails(file, key);
         }
@@ -114,8 +116,17 @@ export class MediaService {
     }
 
     static getMediaType(mimetype) {
-        return Object.keys(SUPPORTED_MIME_TYPES).find(type =>
-            SUPPORTED_MIME_TYPES[type].includes(mimetype)
+        if (typeof mimetype !== 'string') {
+            return undefined;
+        }
+
+        const normalized = mimetype.split(';')[0]?.toLowerCase().trim();
+        if (!normalized) {
+            return undefined;
+        }
+
+        return Object.keys(SUPPORTED_MIME_TYPES).find((type) =>
+            SUPPORTED_MIME_TYPES[type].includes(normalized)
         );
     }
 
@@ -128,6 +139,10 @@ export class MediaService {
         // Video processing (extract thumbnail, etc.)
         if (mediaType === MediaTypes.VIDEO) {
             return this.processVideo(file);
+        }
+
+        if (mediaType === MediaTypes.AUDIO) {
+            return this.processAudio(file);
         }
 
         // Return document as-is
@@ -143,6 +158,11 @@ export class MediaService {
     static async processVideo(file) {
         // Implementation for video processing
         // Return processed file + thumbnail
+        return file;
+    }
+
+    static async processAudio(file) {
+        // Placeholder for future audio-specific processing (e.g. waveform extraction)
         return file;
     }
 };
