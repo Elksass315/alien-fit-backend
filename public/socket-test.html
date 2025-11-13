@@ -104,6 +104,26 @@
             gap: 0.5rem;
         }
 
+        .toggle-group {
+            display: flex;
+            align-items: center;
+        }
+
+        .checkbox-label {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+            font-size: 0.9rem;
+            text-transform: none;
+            letter-spacing: normal;
+            color: #cbd5f5;
+        }
+
+        .checkbox-label input {
+            width: auto;
+            accent-color: #2563eb;
+        }
+
         #log {
             background: #0f172a;
             border-radius: 12px;
@@ -114,6 +134,12 @@
             overflow-y: auto;
             white-space: pre-wrap;
             word-break: break-word;
+        }
+
+        #status,
+        #heartbeatInfo {
+            font-family: "JetBrains Mono", "Fira Code", monospace;
+            font-size: 0.9rem;
         }
 
         .two-col {
@@ -160,6 +186,16 @@
             <div class="button-group">
                 <button id="heartbeatBtn" class="secondary">Send Heartbeat</button>
                 <button id="clearLogBtn" class="secondary">Clear Log</button>
+            </div>
+            <div class="toggle-group">
+                <label class="checkbox-label">
+                    <input id="autoHeartbeat" type="checkbox" checked>
+                    Auto-respond to heartbeat pings
+                </label>
+            </div>
+            <div>
+                <label>Heartbeat Status</label>
+                <div id="heartbeatInfo">waiting</div>
             </div>
             <div>
                 <label>Socket Status</label>

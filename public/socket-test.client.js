@@ -18,8 +18,11 @@ const answerSdpTextarea = document.getElementById('answerSdp');
 const candidateTextarea = document.getElementById('iceCandidate');
 const callTargetUserIdInput = document.getElementById('callTargetUserId');
 const callEndReasonInput = document.getElementById('callEndReason');
+const autoHeartbeatCheckbox = document.getElementById('autoHeartbeat');
+const heartbeatInfo = document.getElementById('heartbeatInfo');
 
 let socket = null;
+let lastPingAttempt = 0;
 
 function log(message, data) {
     const timestamp = new Date().toISOString();
@@ -35,6 +38,7 @@ function log(message, data) {
 }
 
 function setStatus(text) { statusEl.textContent = text; }
+function setHeartbeatInfo(text) { if (heartbeatInfo) heartbeatInfo.textContent = text; }
 function getAccessToken() { return document.getElementById('accessToken').value.trim(); }
 function getBaseUrl() { return document.getElementById('baseUrl').value.trim().replace(/\/$/, ''); }
 function getSocketNamespace() {
@@ -45,6 +49,15 @@ function getSocketNamespace() {
 function getTransportMode() { return transportModeSelect?.value || 'auto'; }
 function ensureSocket() {
     if (!socket || !socket.connected) throw new Error('Socket is not connected. Connect first.');
+}
+
+function sendHeartbeatAck(source = 'manual') {
+    ensureSocket();
+    socket.emit('heartbeat');
+    const stamp = new Date();
+    const attemptLabel = lastPingAttempt ? `ping #${lastPingAttempt}` : 'heartbeat';
+    setHeartbeatInfo(`${attemptLabel} ack sent (${source}) at ${stamp.toLocaleTimeString()}`);
+    log('Heartbeat ack sent', { source, attempt: lastPingAttempt, timestamp: stamp.toISOString() });
 }
 
 function parseJsonInput(raw, label) {
@@ -89,6 +102,8 @@ connectBtn.addEventListener('click', () => {
     log('Socket instance created (waiting for connect)');
     socket.on('connect', () => {
         setStatus(`connected (id: ${socket.id})`);
+        lastPingAttempt = 0;
+        setHeartbeatInfo('Connected; waiting for heartbeat ping');
         const currentTransport = socket?.io?.engine?.transport?.name;
         log('Socket connected', { id: socket.id, transport: currentTransport });
     });
@@ -104,6 +119,8 @@ connectBtn.addEventListener('click', () => {
     });
     socket.on('disconnect', (reason) => {
         setStatus(`disconnected (${reason})`);
+        lastPingAttempt = 0;
+        setHeartbeatInfo(`Disconnected (${reason})`);
         log('Socket disconnected', reason);
     });
     socket.on('chat:message', (payload) => {
@@ -131,6 +148,28 @@ connectBtn.addEventListener('click', () => {
     socket.on('call:end', (payload) => {
         log('Received call:end', payload);
     });
+
+    socket.on('heartbeat', (payload) => {
+        log('Received heartbeat event', payload ?? { type: 'ping' });
+        const payloadType = payload?.type ?? 'ping';
+        if (payloadType === 'ping') {
+            lastPingAttempt = typeof payload?.attempt === 'number' ? payload.attempt : lastPingAttempt + 1;
+            const stamp = new Date();
+            setHeartbeatInfo(`Ping #${lastPingAttempt} at ${stamp.toLocaleTimeString()}`);
+            if (autoHeartbeatCheckbox?.checked) {
+                try {
+                    sendHeartbeatAck('auto');
+                } catch (error) {
+                    log('Auto heartbeat ack failed', error.message);
+                }
+            }
+        } else if (payloadType === 'timeout') {
+            const stamp = new Date();
+            setHeartbeatInfo(`Server timeout at ${stamp.toLocaleTimeString()}`);
+        } else {
+            setHeartbeatInfo(`Heartbeat event: ${payloadType}`);
+        }
+    });
 });
 
 disconnectBtn.addEventListener('click', () => {
@@ -142,12 +181,14 @@ disconnectBtn.addEventListener('click', () => {
 
 heartbeatBtn.addEventListener('click', () => {
     try {
-        ensureSocket();
-        socket.emit('heartbeat');
-        log('Heartbeat emitted');
+        sendHeartbeatAck('manual');
     } catch (error) {
         log('Heartbeat failed', error.message);
     }
+});
+
+autoHeartbeatCheckbox?.addEventListener('change', () => {
+    log('Auto heartbeat toggled', { enabled: autoHeartbeatCheckbox.checked });
 });
 
 clearLogBtn.addEventListener('click', () => { logArea.innerHTML = ''; });
