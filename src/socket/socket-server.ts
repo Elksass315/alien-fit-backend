@@ -11,6 +11,8 @@ import { UserService } from '../modules/user/v1/user.service.js';
 
 const TRAINERS_ROOM = 'trainers';
 const HEARTBEAT_EVENT = 'heartbeat';
+const HEARTBEAT_INTERVAL_MS = 10_000;
+const HEARTBEAT_MAX_MISSES = 3;
 const SEND_MESSAGE_EVENT = 'chat:send';
 const MESSAGE_EVENT = 'chat:message';
 const USER_ROOM_PREFIX = 'chat:';
@@ -32,6 +34,11 @@ interface CallSession {
 type CallTerminator = 'user' | 'trainer' | 'system';
 type CallHistoryStatus = 'started' | 'answered' | 'ended' | 'missed';
 
+interface HeartbeatState {
+    missedPings: number;
+    intervalId: NodeJS.Timeout;
+}
+
 declare module 'socket.io' {
     interface SocketData {
         userId: string;
@@ -41,6 +48,7 @@ declare module 'socket.io' {
 
 const connectionCounters = new Map<string, number>();
 const activeCallSessions = new Map<string, CallSession>();
+const heartbeatStates = new Map<string, HeartbeatState>();
 
 export function initializeSocketServer(server: HTTPServer) {
     const io = new SocketIOServer(server, {
@@ -101,8 +109,11 @@ export function initializeSocketServer(server: HTTPServer) {
         await PresenceService.heartbeat(userId);
 
         socket.on(HEARTBEAT_EVENT, async () => {
+            resetHeartbeat(socket.id);
             await PresenceService.heartbeat(userId);
         });
+
+        startHeartbeatLoop(socket, userId);
 
         socket.on(SEND_MESSAGE_EVENT, async (payload, callback) => {
             try {
@@ -342,6 +353,7 @@ export function initializeSocketServer(server: HTTPServer) {
         });
 
         socket.on('disconnect', async () => {
+            stopHeartbeatLoop(socket.id);
             if (deregisterConnection(userId)) {
                 await PresenceService.markOffline(userId);
             }
@@ -536,6 +548,58 @@ function formatMessageMedia(message: MessageEntity) {
             return { ...rest, sortOrder };
         })
         .sort((a, b) => (a.sortOrder ?? 0) - (b.sortOrder ?? 0));
+}
+
+function startHeartbeatLoop(socket: Socket, userId: string) {
+    stopHeartbeatLoop(socket.id);
+    const state: HeartbeatState = {
+        missedPings: 0,
+        intervalId: setInterval(() => {
+            sendHeartbeatPing(socket, state, userId);
+        }, HEARTBEAT_INTERVAL_MS),
+    };
+
+    heartbeatStates.set(socket.id, state);
+    sendHeartbeatPing(socket, state, userId);
+}
+
+function sendHeartbeatPing(socket: Socket, state: HeartbeatState, userId: string) {
+    if (socket.disconnected) {
+        stopHeartbeatLoop(socket.id);
+        return;
+    }
+
+    const attempt = state.missedPings + 1;
+    socket.emit(HEARTBEAT_EVENT, {
+        type: 'ping',
+        attempt,
+        timestamp: Date.now(),
+        userId,
+    });
+
+    state.missedPings = attempt;
+
+    if (state.missedPings >= HEARTBEAT_MAX_MISSES) {
+        socket.emit(HEARTBEAT_EVENT, { type: 'timeout', userId });
+        stopHeartbeatLoop(socket.id);
+        socket.disconnect(true);
+    }
+}
+
+function resetHeartbeat(socketId: string) {
+    const state = heartbeatStates.get(socketId);
+    if (state) {
+        state.missedPings = 0;
+    }
+}
+
+function stopHeartbeatLoop(socketId: string) {
+    const state = heartbeatStates.get(socketId);
+    if (!state) {
+        return;
+    }
+    clearInterval(state.intervalId);
+    heartbeatStates.delete(socketId);
 }
 
 function registerConnection(userId: string) {

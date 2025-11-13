@@ -1,4 +1,5 @@
 import { redis } from '../../../config/redis.js';
+import { UserEntity } from '../../user/v1/entity/user.entity.js';
 
 const ONLINE_KEY_PREFIX = 'presence:online:';
 const LAST_SEEN_KEY_PREFIX = 'presence:last-seen:';
@@ -11,18 +12,22 @@ export interface PresenceSnapshot {
 
 export const PresenceService = {
     async heartbeat(userId: string): Promise<void> {
-        const now = new Date().toISOString();
+        const now = new Date();
+        const isoNow = now.toISOString();
         await Promise.all([
             redis.set(`${ONLINE_KEY_PREFIX}${userId}`, '1', 'EX', HEARTBEAT_TTL_SECONDS),
-            redis.set(`${LAST_SEEN_KEY_PREFIX}${userId}`, now)
+            redis.set(`${LAST_SEEN_KEY_PREFIX}${userId}`, isoNow),
+            UserEntity.update({ isOnline: true, lastSeen: now }, { where: { id: userId } })
         ]);
     },
 
     async markOffline(userId: string): Promise<void> {
-        const now = new Date().toISOString();
+        const now = new Date();
+        const isoNow = now.toISOString();
         await Promise.all([
             redis.del(`${ONLINE_KEY_PREFIX}${userId}`),
-            redis.set(`${LAST_SEEN_KEY_PREFIX}${userId}`, now)
+            redis.set(`${LAST_SEEN_KEY_PREFIX}${userId}`, isoNow),
+            UserEntity.update({ isOnline: false, lastSeen: now }, { where: { id: userId } })
         ]);
     },
 

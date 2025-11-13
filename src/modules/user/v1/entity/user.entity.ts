@@ -24,6 +24,8 @@ export class UserEntity extends Model {
     declare isProfileComplete?: boolean;
     declare imageId?: string | null;
     declare profileBackgroundImageId?: string | null;
+    declare isOnline: boolean;
+    declare lastSeen: Date | null;
 
     // timestamps
     declare readonly createdAt: Date;
@@ -117,6 +119,16 @@ UserEntity.init(
         profileBackgroundImageId: {
             type: DataTypes.UUID,
             allowNull: true,
+        },
+        isOnline: {
+            type: DataTypes.BOOLEAN,
+            defaultValue: false,
+            allowNull: false,
+        },
+        lastSeen: {
+            type: DataTypes.DATE,
+            allowNull: true,
+            defaultValue: null,
         },
     },
     {
