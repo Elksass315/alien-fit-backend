@@ -22,10 +22,13 @@ export class UserEntity extends Model {
     declare isVerified: boolean;
     declare isBlocked: boolean;
     declare isProfileComplete?: boolean;
+    declare isSubscribed: boolean;
     declare imageId?: string | null;
     declare profileBackgroundImageId?: string | null;
     declare isOnline: boolean;
     declare lastSeen: Date | null;
+    declare lastProfileUpdateAt: Date | null;
+    declare profileUpdateDueAt: Date | null;
 
     // timestamps
     declare readonly createdAt: Date;
@@ -112,6 +115,10 @@ UserEntity.init(
             type: DataTypes.BOOLEAN,
             defaultValue: false,
         },
+        isSubscribed: {
+            type: DataTypes.BOOLEAN,
+            defaultValue: false,
+        },
         imageId: {
             type: DataTypes.UUID,
             allowNull: true,
@@ -126,6 +133,16 @@ UserEntity.init(
             allowNull: false,
         },
         lastSeen: {
+            type: DataTypes.DATE,
+            allowNull: true,
+            defaultValue: null,
+        },
+        lastProfileUpdateAt: {
+            type: DataTypes.DATE,
+            allowNull: true,
+            defaultValue: null,
+        },
+        profileUpdateDueAt: {
             type: DataTypes.DATE,
             allowNull: true,
             defaultValue: null,

@@ -8,6 +8,7 @@ import { HttpResponseError } from '../../../utils/appError.js';
 import { googleClient } from '../../../config/google-client.js';
 import { UserSessionEntity } from '../../user-session/v1/entity/user-session.entity.js';
 import { errorLogger } from '../../../config/logger.config.js';
+import { SubscriptionService } from '../../subscription/v1/subscription.service.js';
 
 
 export async function loginController(req: Request, res: Response): Promise<void> {
@@ -144,9 +145,27 @@ export async function changePasswordController(req: Request, res: Response): Pro
 
 export async function getMeController(req: Request, res: Response): Promise<void> {
     const user = req.user as UserEntity;
+    const userJson = user.toJSON() as any;
+    const profileUpdateDueAt = user.profileUpdateDueAt ? new Date(user.profileUpdateDueAt) : null;
+    const needsProfileUpdate = Boolean(
+        user.isSubscribed &&
+        profileUpdateDueAt &&
+        profileUpdateDueAt.getTime() <= Date.now()
+    );
+
+    userJson.isSubscribed = user.isSubscribed;
+    userJson.lastProfileUpdateAt = user.lastProfileUpdateAt;
+    userJson.profileUpdateDueAt = user.profileUpdateDueAt;
+    userJson.needsProfileUpdate = needsProfileUpdate;
+
+    const subscriptionSnapshot = await SubscriptionService.getSubscriptionSnapshotForUser(user.id.toString());
+
     res.status(StatusCodes.OK).json({
         status: 'success',
-        data: { user: user.toJSON() }
+        data: {
+            user: userJson,
+            subscription: subscriptionSnapshot,
+        }
     });
 }
 
@@ -156,6 +175,9 @@ export async function updateMeController(req: Request, res: Response): Promise<v
     if (req.body.password) {
         delete req.body.password;
     }
+    delete req.body.isSubscribed;
+    delete req.body.lastProfileUpdateAt;
+    delete req.body.profileUpdateDueAt;
     const user = await UserService.updateUser(userId, req.body);
     res.status(StatusCodes.OK).json({
         status: 'success',

@@ -4,6 +4,9 @@ import { UserProfileEntity } from './model/user-profile.model.js';
 import { UserEntity } from '../../user/v1/entity/user.entity.js';
 import { UserService } from '../../user/v1/user.service.js';
 import { MediaEntity } from '../../media/v1/model/media.model.js';
+import { UserSubscriptionEntity } from '../../subscription/v1/entity/user-subscription.entity.js';
+import { UserSubscriptionCycleEntity } from '../../subscription/v1/entity/user-subscription-cycle.entity.js';
+import { SubscriptionCycleStatus } from '../../subscription/v1/subscription.enums.js';
 
 export class UserProfileService {
   static async getUserProfile(userId: string | number): Promise<UserProfileEntity> {
@@ -16,7 +19,7 @@ export class UserProfileService {
 
   static async createOrUpdateUserProfile(userId: string | number, profileData: Partial<UserProfileEntity>): Promise<{ profile: UserProfileEntity, isProfileComplete: boolean }> {
     // Check if user exists
-    await UserService.getUserById(userId);
+    const user = await UserService.getUserById(userId);
 
     // Check if profile exists
     let profile = await UserProfileEntity.findOne({ where: { userId } });
@@ -43,10 +46,21 @@ export class UserProfileService {
     const isProfileComplete = true
 
     // Update user's isProfileComplete status if needed
+    const now = new Date();
+    const nextDue = new Date(now.getTime() + 28 * 24 * 60 * 60 * 1000);
+
     await UserEntity.update(
-      { isProfileComplete },
+      {
+        isProfileComplete,
+        lastProfileUpdateAt: now,
+        profileUpdateDueAt: user.isSubscribed ? nextDue : null,
+      },
       { where: { id: userId } }
     );
+
+    if (user.isSubscribed) {
+      await recordSubscriptionProfileUpdate(userId.toString(), now, nextDue);
+    }
 
     return { profile, isProfileComplete };
   }
@@ -67,4 +81,25 @@ export class UserProfileService {
 
     return profile;
   }
+}
+
+async function recordSubscriptionProfileUpdate(userId: string, updatedAt: Date, nextDueAt: Date) {
+  const subscription = await UserSubscriptionEntity.findOne({ where: { userId } });
+  if (!subscription) {
+    return;
+  }
+
+  const activeCycle = await UserSubscriptionCycleEntity.findOne({
+    where: { subscriptionId: subscription.id, status: SubscriptionCycleStatus.ACTIVE },
+    order: [['cycleNumber', 'DESC']],
+  });
+
+  if (!activeCycle) {
+    return;
+  }
+
+  await Promise.all([
+    activeCycle.update({ profileUpdatedAt: updatedAt, profileUpdateDueAt: nextDueAt }),
+    subscription.update({ nextRenewalAt: activeCycle.endsAt }),
+  ]);
 }
